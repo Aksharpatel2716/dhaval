@@ -748,17 +748,20 @@ export const db = {
     const sale = sales.find((s) => s.id === saleId);
     if (!sale) throw new Error('Sale/Bill not found');
 
-    const saleItems = await this.getSaleItems();
-    const itemsToDelete = saleItems.filter((i) => i.sale_id === saleId);
+    const itemsToDelete = await this.getSaleItems(saleId);
     const products = await this.getProducts();
 
     const now = new Date().toISOString();
     const newTransactions: StockTransaction[] = [];
     let totalRestoredUnits = 0;
 
-    // 1. Restore stock (+) and decrease sold_quantity (-) for every item sold in this bill
+    // 1. Restore stock (+) and decrease sold_quantity (-) for every item sold in this specific bill
     for (const item of itemsToDelete) {
-      const prodIndex = products.findIndex((p) => p.id === item.product_id);
+      let prodIndex = products.findIndex((p) => p.id === item.product_id);
+      if (prodIndex === -1 && item.product_name) {
+        prodIndex = products.findIndex((p) => p.name.trim().toLowerCase() === item.product_name.trim().toLowerCase());
+      }
+
       if (prodIndex > -1) {
         const p = products[prodIndex];
         const prevStock = p.current_stock;
@@ -790,7 +793,8 @@ export const db = {
     localStorage.setItem(LOCAL_SALES, JSON.stringify(remainingSales));
 
     // 4. Remove sale items from active sale items list
-    const remainingItems = saleItems.filter((i) => i.sale_id !== saleId);
+    const allSaleItems = await this.getSaleItems();
+    const remainingItems = allSaleItems.filter((i) => i.sale_id !== saleId);
     localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(remainingItems));
 
     // 5. Append stock transactions to local storage

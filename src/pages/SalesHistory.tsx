@@ -1362,15 +1362,16 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                         onClick={(e) => {
                           e.stopPropagation();
                           const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
-                          const confirmMsg = `Delete Sample Slip #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} sample items will be RETURNED (+) to stock\n\nશું તમે આ સેમ્પલ સ્લીપ ડિલીટ કરવા માંગો છો? સ્ટોકમાં જમા થઈ જશે.`;
+                          const confirmMsg = `Are you sure you want to DELETE Sample Slip #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} sample items will be RETURNED (+) to Stock Inventory\n\nશું તમે આ સેમ્પલ સ્લીપ ડિલીટ કરવા માંગો છો? આઈસ્ક્રીમ સ્ટોકમાં પાછો જમા થઈ જશે.`;
                           if (window.confirm(confirmMsg)) {
                             handleDeleteSale(sale.id);
                           }
                         }}
-                        className="p-2 bg-slate-950 hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 rounded-xl border border-white/5 transition active:scale-90"
-                        title="Delete Sample Slip"
+                        className="px-2.5 py-2 bg-rose-950/40 hover:bg-rose-900/60 active:scale-95 text-rose-300 hover:text-rose-200 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                        title="Delete Sample Slip & Return Stock"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>
@@ -1570,15 +1571,16 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                       onClick={(e) => {
                         e.stopPropagation();
                         const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
-                        const confirmMsg = `Are you sure you want to DELETE ${isSample ? 'Sample Slip' : 'Bill'} #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} items will be RETURNED (+) to Stock\n• ₹${sale.total_price} will be REMOVED (-) from Sales Hisab\n\nશું તમે આ બિલ ડિલીટ કરવા માંગો છો? આઈસ્ક્રીમ સ્ટોકમાં પાછો જમા થઈ જશે.`;
+                        const confirmMsg = `Are you sure you want to DELETE ${isSample ? 'Sample Slip' : 'Bill'} #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} items will be RETURNED (+) to Stock Inventory\n• ₹${sale.total_price} will be REMOVED (-) from Sales Hisab\n\nશું તમે આ બિલ ડિલીટ કરવા માંગો છો? આઈસ્ક્રીમ સ્ટોકમાં પાછો જમા થઈ જશે.`;
                         if (window.confirm(confirmMsg)) {
                           handleDeleteSale(sale.id);
                         }
                       }}
-                      className="p-2 bg-slate-950 hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 rounded-xl border border-white/5 transition active:scale-90"
+                      className="px-2.5 py-2 bg-rose-950/40 hover:bg-rose-900/60 active:scale-95 text-rose-300 hover:text-rose-200 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm"
                       title="Delete Bill & Return Stock"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>
