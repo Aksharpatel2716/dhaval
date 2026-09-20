@@ -223,36 +223,36 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
   });
 
   return (
-    <div className="space-y-4 pb-28 lg:pb-8">
+    <div className="space-y-3 pb-24">
       {/* Top Header & Search Bar */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
               <span>🍦 Quick Billing</span>
             </h1>
-            <p className="text-xs text-slate-400">Stock updates automatically upon billing. Low stock alert displays when stock is below 10 units.</p>
+            <p className="text-[11px] text-slate-400">Tap items to add to bill. Stock auto-deducts.</p>
           </div>
           {cart.length > 0 && (
             <button
               onClick={() => setIsCheckoutOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow-md shadow-purple-900/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow-md shadow-purple-900/40"
             >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Cart ({totalCartCount}) • ₹{cartSubtotal}</span>
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>₹{cartSubtotal} ({totalCartCount})</span>
             </button>
           )}
         </div>
 
         {/* Search & Category Pills */}
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           <div className="relative">
             <Search className="absolute inset-y-0 left-3.5 my-auto w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search ice cream / flavor..."
+              placeholder="Search flavors..."
               className="w-full pl-10 pr-10 py-2.5 bg-slate-900/90 text-white placeholder-slate-500 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm transition"
             />
             {searchQuery && (
@@ -271,7 +271,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition active:scale-95 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition active:scale-95 ${
                   selectedCategory === cat
                     ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40'
                     : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/5'
@@ -285,281 +285,139 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
       </div>
 
       {/* Main Grid: Products Catalog */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Product Cards Grid */}
-        <div className="lg:col-span-8">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent" />
-            </div>
-          ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-              {filteredProducts.map((p) => {
-                const status = getProductStatus(p);
-                const isOut = status === 'Out of Stock';
-                const isLow = status === 'Low Stock'; // <= 10 units
-                const cartItem = cart.find((i) => i.product.id === p.id);
-                const inCartQty = cartItem ? cartItem.quantity : 0;
+      <div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent" />
+          </div>
+        ) : filteredProducts.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            {filteredProducts.map((p) => {
+              const status = getProductStatus(p);
+              const isOut = status === 'Out of Stock';
+              const isLow = status === 'Low Stock'; // <= 10 units
+              const cartItem = cart.find((i) => i.product.id === p.id);
+              const inCartQty = cartItem ? cartItem.quantity : 0;
 
-                return (
-                  <div
-                    key={p.id}
-                    className={`bg-slate-900/80 border rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 active:scale-[0.98] ${
-                      inCartQty > 0
-                        ? 'border-purple-500/50 ring-1 ring-purple-500/30 bg-purple-950/20'
-                        : isOut
-                        ? 'border-rose-500/30 bg-rose-950/10 opacity-75'
-                        : isLow
-                        ? 'border-amber-500/30 bg-amber-950/10'
-                        : 'border-white/[0.08] hover:border-white/20'
-                    }`}
-                  >
-                    {/* Image Area */}
-                    <div className="h-28 sm:h-32 bg-slate-950 rounded-xl mb-2.5 flex items-center justify-center overflow-hidden relative">
-                      {p.image_url ? (
-                        <img
-                          src={p.image_url}
-                          alt={p.name}
-                          className={`w-full h-full object-cover ${isOut ? 'grayscale contrast-50' : ''}`}
-                        />
-                      ) : (
-                        <span className="text-3xl">🍦</span>
-                      )}
+              return (
+                <div
+                  key={p.id}
+                  className={`bg-slate-900/90 border rounded-2xl p-2.5 flex flex-col justify-between transition-all duration-150 active:scale-[0.98] ${
+                    inCartQty > 0
+                      ? 'border-purple-500/60 ring-1 ring-purple-500/40 bg-purple-950/20'
+                      : isOut
+                      ? 'border-rose-500/30 bg-rose-950/10 opacity-75'
+                      : isLow
+                      ? 'border-amber-500/30 bg-amber-950/10'
+                      : 'border-white/[0.08]'
+                  }`}
+                >
+                  {/* Image Area */}
+                  <div className="h-28 bg-slate-950 rounded-xl mb-2 flex items-center justify-center overflow-hidden relative">
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt={p.name}
+                        className={`w-full h-full object-cover ${isOut ? 'grayscale contrast-50' : ''}`}
+                      />
+                    ) : (
+                      <span className="text-3xl">🍦</span>
+                    )}
 
-                      {/* Stock Status Badge (<=10 is Low Stock, 0 is Out of Stock) */}
-                      <span
-                        className={`absolute top-1.5 right-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-md ${
-                          isOut
-                            ? 'bg-rose-600 text-white'
-                            : isLow
-                            ? 'bg-amber-500 text-slate-950 font-black animate-pulse'
-                            : 'bg-slate-950/90 text-emerald-400 border border-white/10'
-                        }`}
+                    {/* Stock Status Badge */}
+                    <span
+                      className={`absolute top-1.5 right-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                        isOut
+                          ? 'bg-rose-600 text-white'
+                          : isLow
+                          ? 'bg-amber-500 text-slate-950 font-black animate-pulse'
+                          : 'bg-slate-950/90 text-emerald-400 border border-white/10'
+                      }`}
+                    >
+                      {isOut ? '🔴 0 (OUT)' : isLow ? `⚠️ ${p.current_stock}` : `🟢 ${p.current_stock}`}
+                    </span>
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="mb-2">
+                    <h3 className="text-xs font-bold text-white line-clamp-1">{p.name}</h3>
+                    <div className="flex justify-between items-center mt-0.5">
+                      <span className="text-sm font-black text-purple-300">₹{p.price}</span>
+                      <span className="text-[9px] text-slate-400 uppercase font-semibold">{p.category}</span>
+                    </div>
+                  </div>
+
+                  {/* Add to Cart / Qty Control Button */}
+                  <div>
+                    {isOut ? (
+                      <button
+                        disabled
+                        className="w-full py-2 bg-rose-950/40 text-rose-400 border border-rose-500/20 text-[10px] font-black text-center rounded-xl cursor-not-allowed"
                       >
-                        {isOut ? '🔴 0 (OUT)' : isLow ? `⚠️ ${p.current_stock} (LOW)` : `🟢 ${p.current_stock} left`}
-                      </span>
-                    </div>
-
-                    {/* Product Details */}
-                    <div>
-                      <h3 className="text-xs sm:text-sm font-bold text-white line-clamp-1">{p.name}</h3>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-sm font-black text-purple-400">₹{p.price}</span>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{p.category}</span>
-                      </div>
-                    </div>
-
-                    {/* Add to Cart / Qty Control Button */}
-                    <div className="mt-2.5">
-                      {isOut ? (
+                        Out of Stock
+                      </button>
+                    ) : inCartQty > 0 ? (
+                      <div className="flex items-center justify-between bg-purple-600/30 border border-purple-500/40 rounded-xl p-1">
                         <button
-                          disabled
-                          className="w-full py-2 bg-rose-950/40 text-rose-400 border border-rose-500/20 text-[10px] font-black text-center rounded-xl cursor-not-allowed"
+                          onClick={() => handleUpdateQuantity(p.id, -1)}
+                          className="w-7 h-7 flex items-center justify-center bg-purple-600 active:scale-90 text-white rounded-lg transition"
                         >
-                          Out of Stock (0)
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
-                      ) : inCartQty > 0 ? (
-                        <div className="flex items-center justify-between bg-purple-600/30 border border-purple-500/40 rounded-xl p-1">
-                          <button
-                            onClick={() => handleUpdateQuantity(p.id, -1)}
-                            className="p-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition active:scale-90"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="text-xs font-black text-white px-2">{inCartQty} in cart</span>
-                          <button
-                            onClick={() => handleUpdateQuantity(p.id, 1)}
-                            disabled={inCartQty >= p.current_stock}
-                            className={`p-1.5 rounded-lg transition active:scale-90 ${
-                              inCartQty >= p.current_stock
-                                ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                                : 'bg-purple-600 hover:bg-purple-500 text-white'
-                            }`}
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
+                        <span className="text-xs font-black text-white">{inCartQty} in bill</span>
                         <button
-                          onClick={() => handleAddToCart(p)}
-                          className="w-full py-2 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
+                          onClick={() => handleUpdateQuantity(p.id, 1)}
+                          disabled={inCartQty >= p.current_stock}
+                          className={`w-7 h-7 flex items-center justify-center rounded-lg transition active:scale-90 ${
+                            inCartQty >= p.current_stock
+                              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                              : 'bg-purple-600 text-white'
+                          }`}
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Add to Bill</span>
                         </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-2">
-              <span className="text-3xl block">🔍</span>
-              <p className="text-xs">No ice creams found matching "{searchQuery}"</p>
-            </div>
-          )}
-        </div>
-
-        {/* Desktop Cart Sidebar */}
-        <div className="hidden lg:block lg:col-span-4 sticky top-6">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col justify-between min-h-[500px]">
-            {/* Cart Header */}
-            <div>
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h2 className="text-sm font-black text-white flex items-center gap-1.5">
-                  <ShoppingCart className="w-4 h-4 text-purple-400" />
-                  <span>Current Bill ({totalCartCount})</span>
-                </h2>
-                {cart.length > 0 && (
-                  <button
-                    onClick={handleClearCart}
-                    className="text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              {/* Items List */}
-              <div className="py-3 space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                {cart.length > 0 ? (
-                  cart.map((item) => {
-                    const prod = products.find((p) => p.id === item.product.id);
-                    const isMax = prod ? item.quantity >= prod.current_stock : false;
-
-                    return (
-                      <div
-                        key={item.product.id}
-                        className="bg-slate-950 p-2.5 rounded-xl border border-white/5 flex items-center justify-between gap-2"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate">{item.product.name}</p>
-                          <p className="text-[10px] text-slate-400">
-                            ₹{item.product.price} × {item.quantity} ={' '}
-                            <span className="text-purple-300 font-bold">₹{item.product.price * item.quantity}</span>
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleUpdateQuantity(item.product.id, -1)}
-                            className="p-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="text-xs font-black text-white w-5 text-center">{item.quantity}</span>
-                          <button
-                            onClick={() => handleUpdateQuantity(item.product.id, 1)}
-                            disabled={isMax}
-                            className={`p-1 rounded ${
-                              isMax ? 'bg-slate-900 text-slate-600 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-slate-300'
-                            }`}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => handleRemoveFromCart(item.product.id)}
-                            className="p-1 text-slate-500 hover:text-rose-400 ml-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-16 text-slate-500 space-y-2">
-                    <ShoppingCart className="w-8 h-8 mx-auto text-slate-700" />
-                    <p className="text-xs">No items in bill yet.<br />Tap any flavor to add.</p>
+                    ) : (
+                      <button
+                        onClick={() => handleAddToCart(p)}
+                        className="w-full py-2 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Add to Bill</span>
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Desktop Checkout Options */}
-            <div className="border-t border-white/10 pt-4 space-y-3">
-              {/* Payment Mode */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-slate-400 font-bold uppercase">Payment Mode</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    onClick={() => setPaymentMethod('cash')}
-                    className={`py-2 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1 transition ${
-                      paymentMethod === 'cash'
-                        ? 'bg-emerald-600 text-white shadow-md'
-                        : 'bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Banknote className="w-3.5 h-3.5" />
-                    <span>Cash</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('upi')}
-                    className={`py-2 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1 transition ${
-                      paymentMethod === 'upi'
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <QrCode className="w-3.5 h-3.5" />
-                    <span>UPI</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('card')}
-                    className={`py-2 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1 transition ${
-                      paymentMethod === 'card'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>Card</span>
-                  </button>
                 </div>
-              </div>
-
-              {/* Total & Button */}
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-400 font-bold uppercase">Total Amount:</span>
-                <span className="text-xl font-black text-white">₹{cartSubtotal.toLocaleString('en-IN')}</span>
-              </div>
-
-              <button
-                onClick={handleCompleteSale}
-                disabled={cart.length === 0 || isSubmitting}
-                className={`w-full py-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 shadow-lg active:scale-95 ${
-                  cart.length === 0 || isSubmitting
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>{isSubmitting ? 'Deducting Stock...' : `Create Bill (₹${cartSubtotal})`}</span>
-              </button>
-            </div>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-2">
+            <span className="text-3xl block">🔍</span>
+            <p className="text-xs">No ice creams found matching "{searchQuery}"</p>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
-      {/* MOBILE STICKY BOTTOM BAR */}
+      {/* MOBILE STICKY FLOATING CART BAR */}
       {/* ========================================================================= */}
       {cart.length > 0 && !isCheckoutOpen && (
-        <div className="lg:hidden fixed bottom-16 left-3 right-3 z-40 animate-slide-up">
+        <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-3 right-3 max-w-lg mx-auto z-40 animate-slide-up">
           <div
             onClick={() => setIsCheckoutOpen(true)}
-            className="bg-purple-600 text-white p-3 rounded-2xl shadow-xl shadow-purple-950 flex items-center justify-between cursor-pointer border border-purple-400/30 active:scale-98 transition"
+            className="bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white p-3 rounded-2xl shadow-2xl flex items-center justify-between cursor-pointer border border-purple-400/40 active:scale-98 transition"
           >
             <div className="flex items-center gap-2.5">
               <div className="bg-white/20 p-2 rounded-xl">
                 <ShoppingCart className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-xs font-bold text-purple-200 block">{totalCartCount} item(s) selected</span>
+                <span className="text-[11px] font-bold text-purple-200 block">{totalCartCount} item(s) selected</span>
                 <span className="text-base font-black text-white">₹{cartSubtotal.toLocaleString('en-IN')}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 bg-white text-purple-900 px-4 py-2 rounded-xl text-xs font-black shadow">
+            <div className="flex items-center gap-1.5 bg-white text-purple-950 px-4 py-2 rounded-xl text-xs font-black shadow-lg">
               <span>Checkout</span>
               <span>⚡</span>
             </div>
@@ -568,22 +426,30 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* MOBILE CHECKOUT BOTTOM DRAWER */}
+      {/* MOBILE CHECKOUT BOTTOM DRAWER / SHEET */}
       {/* ========================================================================= */}
       {isCheckoutOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsCheckoutOpen(false)} />
 
-          <div className="relative bg-slate-900 border-t border-white/10 rounded-t-3xl p-4 max-h-[85vh] flex flex-col justify-between overflow-y-auto animate-slide-up z-10 space-y-4">
+          <div className="relative max-w-lg mx-auto w-full bg-slate-900 border-t border-white/10 rounded-t-3xl p-4 max-h-[85vh] flex flex-col justify-between overflow-y-auto animate-slide-up z-10 space-y-3.5 shadow-2xl">
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-purple-400" />
-                <h3 className="text-sm font-black text-white uppercase">Checkout & Bill Details</h3>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Bill & Checkout</h3>
               </div>
-              <button onClick={() => setIsCheckoutOpen(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleClearCart}
+                  className="text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase px-2 py-1 bg-rose-950/40 rounded-lg border border-rose-500/20"
+                >
+                  Clear All
+                </button>
+                <button onClick={() => setIsCheckoutOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Cart Items Summary */}
@@ -594,16 +460,16 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
 
                 return (
                   <div key={item.product.id} className="bg-slate-950 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 pr-2">
                       <p className="text-xs font-bold text-white truncate">{item.product.name}</p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[11px] text-slate-400">
                         ₹{item.product.price} × {item.quantity} = <span className="text-purple-300 font-bold">₹{item.product.price * item.quantity}</span>
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleUpdateQuantity(item.product.id, -1)}
-                        className="p-1 bg-slate-900 text-slate-300 rounded"
+                        className="w-7 h-7 flex items-center justify-center bg-slate-900 text-slate-300 active:scale-90 rounded-lg"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
@@ -611,8 +477,8 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
                       <button
                         onClick={() => handleUpdateQuantity(item.product.id, 1)}
                         disabled={isMax}
-                        className={`p-1 rounded ${
-                          isMax ? 'bg-slate-900 text-slate-600 cursor-not-allowed' : 'bg-slate-900 text-slate-300'
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg active:scale-90 ${
+                          isMax ? 'bg-slate-900 text-slate-600 cursor-not-allowed' : 'bg-purple-600 text-white'
                         }`}
                       >
                         <Plus className="w-3 h-3" />
@@ -631,7 +497,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
 
             {/* Payment Method Selector */}
             <div className="space-y-1.5">
-              <label className="text-[10px] text-slate-400 font-bold uppercase">Payment Method</label>
+              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Method</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
@@ -672,10 +538,10 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
               </div>
             </div>
 
-            {/* Optional Customer info */}
+            {/* Optional Customer info (Phone & Name) */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-400 font-semibold block mb-1">Customer Name (Optional)</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-1">Customer Name (Opt)</label>
                 <div className="relative">
                   <User className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
                   <input
@@ -683,20 +549,21 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="e.g. Rahul"
-                    className="w-full pl-8 pr-2 py-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs text-white"
+                    className="w-full pl-8 pr-2 py-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-white"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 font-semibold block mb-1">WhatsApp No. (Optional)</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-1">WhatsApp No. (Opt)</label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
                   <input
                     type="tel"
+                    inputMode="tel"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder="9106835321"
-                    className="w-full pl-8 pr-2 py-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs text-white"
+                    className="w-full pl-8 pr-2 py-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-white"
                   />
                 </div>
               </div>
@@ -711,7 +578,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
 
               <button
                 onClick={handleCompleteSale}
-                disabled={isSubmitting}
+                disabled={isSubmitting || cart.length === 0}
                 className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-sm font-black transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950"
               >
                 <Check className="w-5 h-5" />

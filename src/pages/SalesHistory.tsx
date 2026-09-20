@@ -480,55 +480,43 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   };
 
   return (
-    <div className="space-y-4 pb-24 lg:pb-8">
+    <div className="space-y-3 pb-24">
       {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <span>📊 Sales & Expenses</span>
+          <h1 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
+            <span>📊 Sales & Hisab</span>
           </h1>
-          <p className="text-xs text-slate-400">
-            Track shop expenses and view automatic Cash & UPI balance breakdowns
+          <p className="text-[11px] text-slate-400">
+            Cash, UPI & Profit tracking
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
           {/* Add Single Expense */}
           <button
             onClick={() => {
               setExpenseModalMode('single');
               setIsExpenseModalOpen(true);
             }}
-            className="px-3 py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-rose-950"
+            className="px-3 py-2 bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md shadow-rose-950"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Expense</span>
-          </button>
-
-          {/* Add Multiple / Bulk Expenses */}
-          <button
-            onClick={() => {
-              setExpenseModalMode('multiple');
-              setIsExpenseModalOpen(true);
-            }}
-            className="px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 active:scale-95 text-rose-200 hover:text-white rounded-xl text-xs font-bold border border-rose-500/40 transition flex items-center gap-1.5 shadow-sm"
-          >
-            <ListPlus className="w-4 h-4 text-rose-400" />
-            <span>+ Multiple Expenses</span>
+            <span>+ Kharcha</span>
           </button>
 
           {/* WhatsApp Share */}
           <button
             onClick={handleShareDaySummary}
-            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-950"
+            className="p-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-950"
+            title="WhatsApp Summary"
           >
             <MessageSquare className="w-4 h-4" />
-            <span>WhatsApp Summary</span>
           </button>
 
           <button
             onClick={loadAllData}
-            className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl border border-white/10 transition"
+            className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl border border-white/10 transition active:scale-90"
             title="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
@@ -1240,6 +1228,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                     <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
                     <input
                       type="number"
+                      inputMode="numeric"
                       required
                       min={1}
                       autoFocus
@@ -1455,6 +1444,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                             <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-bold">₹</span>
                             <input
                               type="number"
+                              inputMode="numeric"
                               min={0}
                               value={row.amount}
                               onChange={(e) =>

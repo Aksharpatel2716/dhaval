@@ -278,91 +278,92 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
   });
 
   return (
-    <div className="space-y-4 pb-24 lg:pb-8">
+    <div className="space-y-3 pb-24">
       {/* Header & Main Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <span>📦 Stock Management</span>
+          <h1 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
+            <span>📦 Stock Inventory</span>
           </h1>
-          <p className="text-xs text-slate-400">
-            Quickly adjust or enter custom quantities (+50, +100, +500) to update inventory
+          <p className="text-[11px] text-slate-400">
+            Quick adjust stock (+10, -10, or custom qty)
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Logs */}
           <button
             onClick={() => setIsHistoryOpen(true)}
-            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-white/10 flex items-center gap-1.5 transition active:scale-95"
+            className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-white/10 flex items-center gap-1 transition active:scale-95"
+            title="Stock Logs"
           >
             <History className="w-4 h-4 text-purple-400" />
-            <span>Stock Logs</span>
+            <span className="hidden sm:inline">Logs</span>
           </button>
 
           {/* Add Ice Cream */}
           <button
             onClick={handleOpenAdd}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md shadow-purple-900/30 transition"
+            className="px-3 py-2 bg-purple-600 active:scale-95 text-white rounded-xl text-xs font-black flex items-center gap-1 shadow-md shadow-purple-900/40 transition"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Ice Cream</span>
+            <span>+ Add Item</span>
           </button>
         </div>
       </div>
 
       {/* Quick Status KPI Cards (<=10 is Low Stock) */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-3 gap-2">
         {/* Total Flavors */}
         <div
           onClick={() => setFilterType('all')}
-          className={`bg-slate-900/90 p-3 rounded-2xl border transition cursor-pointer active:scale-95 ${
-            filterType === 'all' ? 'border-purple-500 bg-purple-950/20' : 'border-white/5'
+          className={`bg-slate-900/90 p-2.5 rounded-2xl border transition cursor-pointer active:scale-95 ${
+            filterType === 'all' ? 'border-purple-500 bg-purple-950/30 ring-1 ring-purple-500/30' : 'border-white/5'
           }`}
         >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Items</span>
-          <span className="text-lg sm:text-2xl font-black text-white block mt-0.5">{totalItems} flavors</span>
-          <span className="text-[10px] text-purple-300 font-semibold">{totalStockUnits} units in shop</span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Items</span>
+          <span className="text-lg font-black text-white block mt-0.5">{totalItems}</span>
+          <span className="text-[9px] text-purple-300 font-semibold">{totalStockUnits} units</span>
         </div>
 
         {/* Low Stock Warning (<= 10 units) */}
         <div
           onClick={() => setFilterType('low')}
-          className={`bg-slate-900/90 p-3 rounded-2xl border transition cursor-pointer active:scale-95 ${
-            filterType === 'low' ? 'border-amber-500 bg-amber-950/20' : 'border-white/5'
+          className={`bg-slate-900/90 p-2.5 rounded-2xl border transition cursor-pointer active:scale-95 ${
+            filterType === 'low' ? 'border-amber-500 bg-amber-950/30 ring-1 ring-amber-500/30' : 'border-white/5'
           }`}
         >
-          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+          <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-0.5">
             <AlertTriangle className="w-3 h-3" />
-            <span>Low Stock (&le;10)</span>
+            <span>Low (&le;10)</span>
           </span>
-          <span className="text-lg sm:text-2xl font-black text-amber-300 block mt-0.5">{lowStockCount} items</span>
-          <span className="text-[10px] text-slate-400 font-semibold">Refill required</span>
+          <span className="text-lg font-black text-amber-300 block mt-0.5">{lowStockCount}</span>
+          <span className="text-[9px] text-slate-400 font-semibold">Refill now</span>
         </div>
 
         {/* Out of Stock (0 units) */}
         <div
           onClick={() => setFilterType('out')}
-          className={`bg-slate-900/90 p-3 rounded-2xl border transition cursor-pointer active:scale-95 ${
-            filterType === 'out' ? 'border-rose-500 bg-rose-950/20' : 'border-white/5'
+          className={`bg-slate-900/90 p-2.5 rounded-2xl border transition cursor-pointer active:scale-95 ${
+            filterType === 'out' ? 'border-rose-500 bg-rose-950/30 ring-1 ring-rose-500/30' : 'border-white/5'
           }`}
         >
-          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">Out of Stock (0)</span>
-          <span className="text-lg sm:text-2xl font-black text-rose-400 block mt-0.5">{outOfStockCount} items</span>
-          <span className="text-[10px] text-slate-400 font-semibold">0 left</span>
+          <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider block">Out (0)</span>
+          <span className="text-lg font-black text-rose-400 block mt-0.5">{outOfStockCount}</span>
+          <span className="text-[9px] text-slate-400 font-semibold">0 left</span>
         </div>
       </div>
 
       {/* Search & Category Filter Pills */}
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         <div className="relative">
           <Search className="absolute inset-y-0 left-3.5 my-auto w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search products to adjust stock..."
-            className="w-full pl-10 pr-10 py-2.5 bg-slate-900 text-white placeholder-slate-500 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm transition"
+            placeholder="Search items..."
+            className="w-full pl-10 pr-10 py-2.5 bg-slate-900/90 text-white placeholder-slate-500 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm transition"
           />
           {searchQuery && (
             <button
@@ -392,13 +393,13 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
         </div>
       </div>
 
-      {/* Products Stock Cards Grid */}
+      {/* Products Stock Cards List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent" />
         </div>
       ) : filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="space-y-2.5">
           {filteredProducts.map((p) => {
             const status = getProductStatus(p);
             const isOut = status === 'Out of Stock'; // 0
@@ -407,7 +408,7 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
             return (
               <div
                 key={p.id}
-                className={`bg-slate-900 border rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition ${
+                className={`bg-slate-900/90 border rounded-2xl p-3 flex flex-col justify-between transition ${
                   isOut
                     ? 'border-rose-500/40 bg-rose-950/15'
                     : isLow
@@ -416,9 +417,9 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                 }`}
               >
                 {/* Product Header */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-white/10 shrink-0">
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-11 h-11 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-white/10 shrink-0">
                       {p.image_url ? (
                         <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                       ) : (
@@ -426,10 +427,10 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-sm font-bold text-white truncate">{p.name}</h3>
+                      <h3 className="text-xs font-bold text-white truncate">{p.name}</h3>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs font-black text-purple-400">₹{p.price}</span>
-                        <span className="text-[10px] text-slate-400 font-semibold uppercase">{p.category}</span>
+                        <span className="text-xs font-black text-purple-300">₹{p.price}</span>
+                        <span className="text-[9px] text-slate-400 font-semibold uppercase">{p.category}</span>
                       </div>
                     </div>
                   </div>
@@ -438,14 +439,14 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleOpenEdit(p)}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition active:scale-90"
                       title="Edit Item"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDeleteProduct(p.id, p.name)}
-                      className="p-1.5 bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 rounded-lg transition"
+                      className="p-1.5 bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 rounded-lg transition active:scale-90"
                       title="Delete Item"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -456,24 +457,24 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                 {/* Stock Level Indicator (Click to open bulk modal) */}
                 <div 
                   onClick={() => handleOpenBulkModal(p)}
-                  className="mt-3.5 pt-3 border-t border-white/5 flex items-center justify-between cursor-pointer group"
+                  className="mt-2.5 pt-2.5 border-t border-white/5 flex items-center justify-between cursor-pointer active:scale-98 transition"
                   title="Click to add custom/bulk stock"
                 >
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1">
-                      <span>Current Stock</span>
-                      <Zap className="w-2.5 h-2.5 text-purple-400 group-hover:scale-125 transition" />
+                    <span className="text-[9px] text-slate-400 uppercase font-bold flex items-center gap-1">
+                      <span>Available Stock</span>
+                      <Zap className="w-2.5 h-2.5 text-purple-400" />
                     </span>
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="text-xl font-black text-white group-hover:text-purple-300 transition">
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xl font-black text-white">
                         {p.current_stock}
                       </span>
-                      <span className="text-xs text-slate-400 font-semibold">units</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">units</span>
                     </div>
                   </div>
 
                   <span
-                    className={`text-[10px] font-black px-2 py-1 rounded-lg ${
+                    className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
                       isOut
                         ? 'bg-rose-600 text-white'
                         : isLow
@@ -481,19 +482,19 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                         : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                     }`}
                   >
-                    {isOut ? '🔴 0 (Out of Stock)' : isLow ? '⚠️ Low Stock (<=10)' : '🟢 In Stock'}
+                    {isOut ? '🔴 Out of Stock' : isLow ? '⚠️ Low Stock' : '🟢 In Stock'}
                   </span>
                 </div>
 
                 {/* 1. Quick Refill Buttons (-10, -1, +1, +10) */}
-                <div className="mt-3 pt-2.5 border-t border-white/5 space-y-2">
+                <div className="mt-2.5 pt-2 border-t border-white/5 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold">⚡ Quick Adjust:</span>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase">⚡ Fast Adjust:</span>
                     <button
                       onClick={() => handleOpenBulkModal(p, 'add')}
                       className="text-[10px] text-purple-400 hover:text-purple-300 font-bold underline flex items-center gap-0.5"
                     >
-                      <span>Custom (+ / -)</span>
+                      <span>Custom Sheet</span>
                       <ArrowUpRight className="w-2.5 h-2.5" />
                     </button>
                   </div>
@@ -503,7 +504,6 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                       onClick={() => handleQuickAdjust(p, -10)}
                       disabled={p.current_stock <= 0}
                       className="py-1.5 bg-rose-950/40 hover:bg-rose-900/60 disabled:opacity-40 disabled:cursor-not-allowed text-rose-300 rounded-lg text-xs font-bold border border-rose-500/20 transition active:scale-90"
-                      title="Deduct 10 units"
                     >
                       -10
                     </button>
@@ -511,30 +511,28 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                       onClick={() => handleQuickAdjust(p, -1)}
                       disabled={p.current_stock <= 0}
                       className="py-1.5 bg-slate-950 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 rounded-lg text-xs font-bold border border-white/10 transition active:scale-90"
-                      title="Deduct 1 unit"
                     >
                       -1
                     </button>
                     <button
                       onClick={() => handleQuickAdjust(p, 1)}
                       className="py-1.5 bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-xs font-bold border border-purple-500/30 transition active:scale-90"
-                      title="Add 1 unit"
                     >
                       +1
                     </button>
                     <button
                       onClick={() => handleQuickAdjust(p, 10)}
                       className="py-1.5 bg-emerald-600/40 hover:bg-emerald-600 text-emerald-200 hover:text-white rounded-lg text-xs font-black border border-emerald-500/40 transition active:scale-90"
-                      title="Add 10 units"
                     >
                       +10
                     </button>
                   </div>
 
                   {/* 2. INLINE CUSTOM TYPE INPUT (TYPE ANY NUMBER E.G. +50 OR -148) */}
-                  <div className="flex gap-1.5 pt-1">
+                  <div className="flex gap-1.5 pt-0.5">
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={cardCustomQty[p.id] ?? ''}
                       onChange={(e) => {
                         const val = e.target.value === '' ? '' : Number(e.target.value);
@@ -545,7 +543,7 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                           handleInlineCustomAdjust(p, false);
                         }
                       }}
-                      placeholder="Qty (e.g. 50, 148)"
+                      placeholder="Qty (e.g. 50)"
                       className="w-full px-2.5 py-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 focus:border-purple-500 outline-none font-bold"
                     />
 
