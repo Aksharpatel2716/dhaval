@@ -276,7 +276,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
           </div>
 
           {/* Category Chips (Smooth Horizontal Scroll) */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
             {dynamicCategories.map((cat) => (
               <button
                 key={cat}

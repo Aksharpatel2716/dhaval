@@ -9,22 +9,40 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  html, body {
-    @apply text-slate-100 font-sans antialiased overflow-x-hidden;
+  html {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply text-slate-100 font-sans antialiased;
     font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
     background-color: #020617;
     background-image: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.7)), url('/images/icecream_clear_bg.png');
     background-size: cover;
     background-position: center;
-    background-attachment: fixed;
     background-repeat: no-repeat;
-    touch-action: manipulation;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
     -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
-  /* Prevent automatic iOS zooming on text inputs */
+  /* Single finger touch action for buttons & tap targets */
+  button, [role="button"], a {
+    touch-action: manipulation;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent automatic iOS zooming on text inputs and allow text selection */
   input, select, textarea {
     font-size: 16px !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    touch-action: auto !important;
   }
 
   /* Custom scrollbar */

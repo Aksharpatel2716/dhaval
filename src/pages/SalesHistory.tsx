@@ -646,7 +646,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
         </div>
 
         {/* Date Preset Buttons */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
           <button
             onClick={() => setDateFilterPreset('today')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition active:scale-95 ${

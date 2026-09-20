@@ -107,7 +107,7 @@ export function App() {
         {/* ========================================================================= */}
         {/* MAIN MOBILE VIEWPORT */}
         {/* ========================================================================= */}
-        <main className="flex-1 p-3 sm:p-4 pb-24 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-4 pb-28">
           {currentPage === 'POS' && (
             <POS triggerToast={triggerToast} onNavigate={handleNavigate as any} />
           )}

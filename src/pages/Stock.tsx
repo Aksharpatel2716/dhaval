@@ -388,7 +388,7 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
         </div>
 
         {/* Category Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
           {dynamicCategories.map((cat) => (
             <button
               key={cat}
