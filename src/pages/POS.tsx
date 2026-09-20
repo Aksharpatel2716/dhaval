@@ -13,6 +13,8 @@ import {
   CreditCard,
   QrCode,
   Banknote,
+  Gift,
+  Sparkles,
   X,
   Phone,
   User,
@@ -40,7 +42,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
 
   // Checkout Drawer / Modal state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'sample'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -166,12 +168,14 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
 
     setIsSubmitting(true);
     try {
+      const isSample = paymentMethod === 'sample';
       // 1. Create sale and minus stock in DB
       const confirmedSale = await db.createSale(cart, {
         payment_method: paymentMethod,
+        is_sample: isSample,
         customer_name: customerName,
         customer_phone: customerPhone,
-        discount: discountAmount,
+        discount: isSample ? 0 : discountAmount,
       });
 
       // 2. Prepare receipt items
@@ -181,8 +185,8 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
         product_id: item.product.id,
         product_name: item.product.name,
         quantity: item.quantity,
-        price: item.product.price,
-        total: item.product.price * item.quantity,
+        price: isSample ? 0 : item.product.price,
+        total: isSample ? 0 : item.product.price * item.quantity,
       }));
 
       // 3. Check for low stock (<= 10) or out of stock (0) to warn user
@@ -209,8 +213,13 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
       setCustomerName('');
       setCustomerPhone('');
       setDiscountAmount(0);
+      setPaymentMethod('cash');
 
-      triggerToast('Bill created & stock deducted successfully! 🍦', 'success');
+      if (isSample) {
+        triggerToast('🎁 Free Sample bill created (₹0) & stock deducted! 🍨', 'success');
+      } else {
+        triggerToast('Bill created & stock deducted successfully! 🍦', 'success');
+      }
       
       // Reload products to show freshly subtracted stock
       await loadProducts();
@@ -505,60 +514,97 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
               })}
             </div>
 
-            {/* Payment Method Selector */}
+            {/* Payment Method / Mode Selector */}
             <div className="space-y-1.5">
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Method</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bill Type / Payment Method</label>
+                {paymentMethod === 'sample' && (
+                  <span className="text-[10px] font-black text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-md animate-pulse">
+                    🎁 ₹0 Free Sample Active
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('cash')}
                   className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                     paymentMethod === 'cash'
-                      ? 'bg-emerald-600 text-white shadow-lg'
-                      : 'bg-slate-950 text-slate-400 border border-white/5'
+                      ? 'bg-emerald-600 text-white shadow-lg ring-1 ring-emerald-400'
+                      : 'bg-slate-950 text-slate-400 border border-white/5 hover:bg-slate-800'
                   }`}
                 >
                   <Banknote className="w-4 h-4" />
                   <span>Cash 💵</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('upi')}
                   className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                     paymentMethod === 'upi'
-                      ? 'bg-purple-600 text-white shadow-lg'
-                      : 'bg-slate-950 text-slate-400 border border-white/5'
+                      ? 'bg-purple-600 text-white shadow-lg ring-1 ring-purple-400'
+                      : 'bg-slate-950 text-slate-400 border border-white/5 hover:bg-slate-800'
                   }`}
                 >
                   <QrCode className="w-4 h-4" />
                   <span>UPI 📱</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('card')}
                   className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                     paymentMethod === 'card'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-slate-950 text-slate-400 border border-white/5'
+                      ? 'bg-blue-600 text-white shadow-lg ring-1 ring-blue-400'
+                      : 'bg-slate-950 text-slate-400 border border-white/5 hover:bg-slate-800'
                   }`}
                 >
                   <CreditCard className="w-4 h-4" />
                   <span>Card 💳</span>
                 </button>
+
+                {/* 🎁 FREE SAMPLE (0 RUPEES) BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('sample')}
+                  className={`py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                    paymentMethod === 'sample'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-lg ring-2 ring-amber-300 shadow-amber-950'
+                      : 'bg-amber-950/40 text-amber-300 border border-amber-500/30 hover:bg-amber-900/50'
+                  }`}
+                >
+                  <Gift className="w-4 h-4 text-amber-300" />
+                  <span>Sample 🎁 (₹0)</span>
+                </button>
               </div>
+
+              {/* Sample Mode Notice Banner */}
+              {paymentMethod === 'sample' && (
+                <div className="p-2.5 bg-amber-950/40 border border-amber-500/40 rounded-xl flex items-start gap-2 text-amber-200">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-[11px] leading-snug">
+                    <span className="font-bold block text-amber-300">Free Business Tasting Sample Mode:</span>
+                    <span>Bill amount will be <strong>₹0 (Free of charge)</strong>. Selected ice cream items will be deducted from inventory.</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Optional Customer info (Phone & Name) */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-400 font-semibold block mb-1">Customer Name (Opt)</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-1">
+                  {paymentMethod === 'sample' ? 'Sample Recipient / Client (Opt)' : 'Customer Name (Opt)'}
+                </label>
                 <div className="relative">
                   <User className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
                   <input
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="e.g. Rahul"
+                    placeholder={paymentMethod === 'sample' ? 'e.g. Ramesh Bhai (Client)' : 'e.g. Rahul'}
                     className="w-full pl-8 pr-2 py-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-white"
                   />
                 </div>
@@ -582,17 +628,38 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
             {/* Final Total & Submit */}
             <div className="border-t border-white/10 pt-3 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-400 font-bold uppercase">Grand Total:</span>
-                <span className="text-2xl font-black text-white">₹{cartSubtotal.toLocaleString('en-IN')}</span>
+                <span className="text-xs text-slate-400 font-bold uppercase">
+                  {paymentMethod === 'sample' ? 'Sample Bill Total:' : 'Grand Total:'}
+                </span>
+                <div className="text-right">
+                  {paymentMethod === 'sample' ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xs line-through text-slate-500 font-bold">₹{cartSubtotal.toLocaleString('en-IN')}</span>
+                      <span className="text-2xl font-black text-amber-400">₹0 (FREE)</span>
+                    </div>
+                  ) : (
+                    <span className="text-2xl font-black text-white">₹{cartSubtotal.toLocaleString('en-IN')}</span>
+                  )}
+                </div>
               </div>
 
               <button
                 onClick={handleCompleteSale}
                 disabled={isSubmitting || cart.length === 0}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-sm font-black transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950"
+                className={`w-full py-3.5 active:scale-95 text-white rounded-xl text-sm font-black transition flex items-center justify-center gap-2 shadow-lg ${
+                  paymentMethod === 'sample'
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950'
+                    : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950'
+                }`}
               >
-                <Check className="w-5 h-5" />
-                <span>{isSubmitting ? 'Deducting Stock...' : `Confirm & Create Bill (₹${cartSubtotal})`}</span>
+                {paymentMethod === 'sample' ? <Gift className="w-5 h-5 text-slate-950" /> : <Check className="w-5 h-5" />}
+                <span>
+                  {isSubmitting
+                    ? 'Deducting Stock...'
+                    : paymentMethod === 'sample'
+                    ? `Dispatch Free Sample (₹0 Bill) 🎁`
+                    : `Confirm & Create Bill (₹${cartSubtotal})`}
+                </span>
               </button>
             </div>
           </div>

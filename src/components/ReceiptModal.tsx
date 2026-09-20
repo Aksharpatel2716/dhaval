@@ -24,6 +24,7 @@ import {
   Banknote,
   Smartphone,
   CreditCard,
+  Gift,
 } from 'lucide-react';
 import { generateSingleInvoicePDF } from '../utils/pdfGenerator';
 
@@ -46,6 +47,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   if (!isOpen || !sale) return null;
 
   const shop = db.getShopSettings();
+  const isSample = sale.payment_method === 'sample' || sale.is_sample === true;
 
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
@@ -78,24 +80,43 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     msg += `📍 _${shop.address}_\n`;
     msg += `📞 *Mo:* ${shop.phone}\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🧾 *TAX INVOICE / BILL*\n`;
-    msg += `🔖 *Invoice No:* #${sale.id.substring(5, 11).toUpperCase()}\n`;
-    msg += `📅 *Date:* ${formatDate(sale.created_at)} at ${formatTime(sale.created_at)}\n`;
-    if (sale.customer_name) msg += `👤 *Customer:* ${sale.customer_name} ${sale.customer_phone ? `(${sale.customer_phone})` : ''}\n`;
-    msg += `💳 *Payment Mode:* ${(sale.payment_method || 'cash').toUpperCase()}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `*🍨 PURCHASED ITEMS:*\n`;
-    items.forEach((item, index) => {
-      msg += `${index + 1}. *${item.product_name}*\n   └ Qty: *${item.quantity}* × ₹${item.price} = *₹${item.total.toLocaleString('en-IN')}*\n`;
-    });
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    if (sale.discount && sale.discount > 0) {
-      msg += `🎁 *Discount Applied:* -₹${sale.discount}\n`;
+
+    if (isSample) {
+      msg += `🎁 *FREE TASTING / SAMPLE DISPATCH SLIP*\n`;
+      msg += `🔖 *Sample No:* #${sale.id.substring(5, 11).toUpperCase()}\n`;
+      msg += `📅 *Date:* ${formatDate(sale.created_at)} at ${formatTime(sale.created_at)}\n`;
+      if (sale.customer_name) msg += `👤 *Client / Recipient:* ${sale.customer_name} ${sale.customer_phone ? `(${sale.customer_phone})` : ''}\n`;
+      msg += `📋 *Type:* 🎁 100% FREE PROMOTIONAL SAMPLE\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `*🍨 SAMPLE FLAVORS PROVIDED:*\n`;
+      items.forEach((item, index) => {
+        msg += `${index + 1}. *${item.product_name}* (Qty: *${item.quantity}* scoops/packs - Free)\n`;
+      });
+      msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `💰 *TOTAL AMOUNT PAYABLE: ₹0 (FREE SAMPLE)*\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `✅ *STATUS: SAMPLE DISPATCHED & VERIFIED*\n`;
+      msg += `✨ _Enjoy your tasting sample from ${shop.shop_name}! We look forward to your valuable feedback and future orders!_ 🍨✨\n`;
+    } else {
+      msg += `🧾 *TAX INVOICE / BILL*\n`;
+      msg += `🔖 *Invoice No:* #${sale.id.substring(5, 11).toUpperCase()}\n`;
+      msg += `📅 *Date:* ${formatDate(sale.created_at)} at ${formatTime(sale.created_at)}\n`;
+      if (sale.customer_name) msg += `👤 *Customer:* ${sale.customer_name} ${sale.customer_phone ? `(${sale.customer_phone})` : ''}\n`;
+      msg += `💳 *Payment Mode:* ${(sale.payment_method || 'cash').toUpperCase()}\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `*🍨 PURCHASED ITEMS:*\n`;
+      items.forEach((item, index) => {
+        msg += `${index + 1}. *${item.product_name}*\n   └ Qty: *${item.quantity}* × ₹${item.price} = *₹${item.total.toLocaleString('en-IN')}*\n`;
+      });
+      msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+      if (sale.discount && sale.discount > 0) {
+        msg += `🎁 *Discount Applied:* -₹${sale.discount}\n`;
+      }
+      msg += `💰 *GRAND TOTAL PAID: ₹${sale.total_price.toLocaleString('en-IN')}*\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `✅ *STATUS: PAID & VERIFIED*\n`;
+      msg += `🌟 _Thank you for visiting ${shop.shop_name}! Have a sweet day!_ 🍨✨\n`;
     }
-    msg += `💰 *GRAND TOTAL PAID: ₹${sale.total_price.toLocaleString('en-IN')}*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `✅ *STATUS: PAID & VERIFIED*\n`;
-    msg += `🌟 _Thank you for visiting ${shop.shop_name}! Have a sweet day!_ 🍨✨\n`;
     return encodeURIComponent(msg);
   };
 
@@ -128,14 +149,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         {/* Top App Header with Theme Switcher */}
         <div className="p-3 sm:p-4 border-b border-white/10 bg-slate-950/95 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className={`p-2 rounded-xl shrink-0 ${
+              isSample
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+            }`}>
+              {isSample ? <Gift className="w-4 h-4 text-amber-400" /> : <CheckCircle2 className="w-4 h-4" />}
             </div>
             <div className="min-w-0">
               <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider flex items-center gap-1.5 truncate">
-                <span>Invoice #{sale.id.substring(5, 11).toUpperCase()}</span>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">
-                  PAID
+                <span>{isSample ? `Sample #${sale.id.substring(5, 11).toUpperCase()}` : `Invoice #${sale.id.substring(5, 11).toUpperCase()}`}</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                  isSample
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                }`}>
+                  {isSample ? '🎁 FREE SAMPLE' : 'PAID'}
                 </span>
               </h3>
               <p className="text-[10px] text-slate-400 truncate">
@@ -223,7 +252,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             }`}>
               {/* Logo Icon Badge */}
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/20 mb-2">
-                <span className="text-2xl drop-shadow">🍨</span>
+                <span className="text-2xl drop-shadow">{isSample ? '🎁' : '🍨'}</span>
               </div>
 
               <h2 className={`text-lg sm:text-xl font-black uppercase tracking-wider ${
@@ -243,7 +272,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   ? 'text-purple-300'
                   : 'text-purple-700'
               }`}>
-                {shop.tagline}
+                {isSample ? '🎁 Free Tasting / Promotional Sample Pack' : shop.tagline}
               </p>
 
               <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] mt-1.5 ${
@@ -276,7 +305,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <div className="flex items-center gap-1.5">
                   <Receipt className="w-3.5 h-3.5 text-purple-500" />
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Invoice:</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">
+                    {isSample ? 'Sample No:' : 'Invoice:'}
+                  </span>
                   <span className="font-mono font-black text-xs text-purple-600">
                     #{sale.id.substring(5, 11).toUpperCase()}
                   </span>
@@ -296,7 +327,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <div className="flex items-center justify-between pt-1 border-t border-dashed border-slate-200/50">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="text-[10px] text-slate-400 uppercase font-bold">Customer:</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">
+                      {isSample ? 'Client / Recipient:' : 'Customer:'}
+                    </span>
                     <span className="font-bold text-slate-900 dark:text-white">
                       {sale.customer_name}
                     </span>
@@ -311,16 +344,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
               {/* Row 3: Payment Method Pill */}
               <div className="flex items-center justify-between pt-1 border-t border-dashed border-slate-200/50">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Payment Status:</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Bill Type:</span>
                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
-                  isUpi
+                  isSample
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                    : isUpi
                     ? 'bg-purple-100 text-purple-700 border border-purple-200'
                     : isCard
                     ? 'bg-blue-100 text-blue-700 border border-blue-200'
                     : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                 }`}>
-                  {isUpi ? <Smartphone className="w-3 h-3" /> : isCard ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
-                  <span>{isUpi ? 'PAID VIA UPI' : isCard ? 'PAID VIA CARD' : 'PAID IN CASH'}</span>
+                  {isSample ? <Gift className="w-3 h-3 text-amber-600" /> : isUpi ? <Smartphone className="w-3 h-3" /> : isCard ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                  <span>{isSample ? '🎁 FREE TRIAL SAMPLE (₹0)' : isUpi ? 'PAID VIA UPI' : isCard ? 'PAID VIA CARD' : 'PAID IN CASH'}</span>
                 </span>
               </div>
             </div>
@@ -353,7 +388,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     <tr key={item.id} className="hover:bg-purple-50/20 transition-colors">
                       <td className="py-2.5 pr-2 font-bold">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm">🍨</span>
+                          <span className="text-sm">{isSample ? '🎁' : '🍨'}</span>
                           <div>
                             <span className={`block text-xs font-bold leading-tight ${
                               themeMode === 'clean'
@@ -365,7 +400,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                               {item.product_name}
                             </span>
                             <span className="text-[10px] text-slate-400 font-normal">
-                              Ice cream scoop / pack
+                              {isSample ? 'Free promotional sample' : 'Ice cream scoop / pack'}
                             </span>
                           </div>
                         </div>
@@ -384,16 +419,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                       <td className={`py-2.5 text-right font-medium ${
                         themeMode === 'clean' ? 'text-slate-500' : themeMode === 'dark' ? 'text-slate-400' : 'text-slate-700'
                       }`}>
-                        ₹{item.price}
+                        {isSample ? '₹0' : `₹${item.price}`}
                       </td>
                       <td className={`py-2.5 text-right font-black ${
-                        themeMode === 'clean'
+                        isSample
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : themeMode === 'clean'
                           ? 'text-slate-900'
                           : themeMode === 'dark'
                           ? 'text-purple-300'
                           : 'text-slate-900'
                       }`}>
-                        ₹{item.total.toLocaleString('en-IN')}
+                        {isSample ? 'FREE' : `₹${item.total.toLocaleString('en-IN')}`}
                       </td>
                     </tr>
                   ))}
@@ -410,18 +447,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 : 'border-dashed border-slate-300 text-slate-700'
             }`}>
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-400">Total Quantity Sold:</span>
+                <span className="text-slate-400">Total Quantity Dispatched:</span>
                 <span className="font-bold">{totalItemCount} scoops / packs</span>
               </div>
 
-              <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-400">Subtotal:</span>
-                <span className="font-bold">
-                  ₹{(sale.total_price + (sale.discount || 0)).toLocaleString('en-IN')}
-                </span>
-              </div>
+              {!isSample && (
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-400">Subtotal:</span>
+                  <span className="font-bold">
+                    ₹{(sale.total_price + (sale.discount || 0)).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              )}
 
-              {sale.discount && sale.discount > 0 && (
+              {sale.discount && sale.discount > 0 && !isSample && (
                 <div className="flex justify-between items-center text-[11px] text-rose-500 font-bold">
                   <span>Special Discount:</span>
                   <span>-₹{sale.discount.toLocaleString('en-IN')}</span>
@@ -429,29 +468,37 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               )}
 
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-400">Tax / GST:</span>
-                <span className="font-semibold text-emerald-600">Inclusive (0% CGST + 0% SGST)</span>
+                <span className="text-slate-400">{isSample ? 'Sample Type:' : 'Tax / GST:'}</span>
+                <span className={`font-semibold ${isSample ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {isSample ? '100% Free Promotional Sample (₹0)' : 'Inclusive (0% CGST + 0% SGST)'}
+                </span>
               </div>
 
               {/* GRAND TOTAL HERO BANNER */}
               <div className={`p-3.5 rounded-2xl flex items-center justify-between mt-3 shadow-md ${
-                themeMode === 'clean'
+                isSample
+                  ? 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 text-slate-950 font-black'
+                  : themeMode === 'clean'
                   ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white'
                   : themeMode === 'dark'
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-700 text-white border border-purple-400/40'
                   : 'bg-slate-900 text-white'
               }`}>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-purple-200 block">
-                    GRAND TOTAL PAID
+                  <span className={`text-[10px] font-black uppercase tracking-widest block ${
+                    isSample ? 'text-amber-950' : 'text-purple-200'
+                  }`}>
+                    {isSample ? '🎁 SAMPLE BILL TOTAL' : 'GRAND TOTAL PAID'}
                   </span>
-                  <span className="text-[10px] text-purple-100/80 font-medium">
-                    (Net Amount Received)
+                  <span className={`text-[10px] font-medium ${
+                    isSample ? 'text-amber-900' : 'text-purple-100/80'
+                  }`}>
+                    {isSample ? '(100% Complimentary Trial)' : '(Net Amount Received)'}
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-black tracking-tight">
-                    ₹{sale.total_price.toLocaleString('en-IN')}
+                    {isSample ? '₹0 FREE' : `₹${sale.total_price.toLocaleString('en-IN')}`}
                   </span>
                 </div>
               </div>
@@ -466,9 +513,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 : 'border-dashed border-slate-300'
             }`}>
               {/* Verified Shield Pill */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-[10px] text-emerald-600 dark:text-emerald-400 font-black tracking-wider">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                <span>OFFICIAL VERIFIED POS RECEIPT</span>
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider border ${
+                isSample
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                <ShieldCheck className={`w-3.5 h-3.5 ${isSample ? 'text-amber-500' : 'text-emerald-500'}`} />
+                <span>{isSample ? 'OFFICIAL SAMPLE DISPATCH SLIP' : 'OFFICIAL VERIFIED POS RECEIPT'}</span>
               </div>
 
               {/* Simulated Crisp Barcode */}
@@ -485,9 +536,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <p className={`text-xs font-bold ${
                 themeMode === 'clean' ? 'text-purple-700' : themeMode === 'dark' ? 'text-purple-300' : 'text-slate-800'
               }`}>
-                🍨 Thank you for choosing {shop.shop_name}! Have a sweet day! 🍨
+                {isSample
+                  ? `🍨 Enjoy your free tasting sample from ${shop.shop_name}! 🍨`
+                  : `🍨 Thank you for choosing ${shop.shop_name}! Have a sweet day! 🍨`}
               </p>
-              <p className="text-[9px] text-slate-400">Computer Generated Smart Electronic Tax Invoice</p>
+              <p className="text-[9px] text-slate-400">
+                {isSample ? 'Computer Generated Promotional Sample Slip' : 'Computer Generated Smart Electronic Tax Invoice'}
+              </p>
             </div>
 
             {/* Bottom Zigzag Edge for Thermal Mode */}

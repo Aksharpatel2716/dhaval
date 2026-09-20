@@ -934,13 +934,15 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
                     </div>
                     <div className="text-right shrink-0">
                       <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                        tx.action_type === 'sold'
+                        tx.action_type === 'sample'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : tx.action_type === 'sold'
                           ? 'bg-rose-500/20 text-rose-400'
                           : tx.action_type === 'added'
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : 'bg-blue-500/20 text-blue-400'
                       }`}>
-                        {tx.action_type === 'added' ? '+' : tx.action_type === 'sold' ? '-' : ''}{tx.quantity} units
+                        {tx.action_type === 'added' ? '+' : '-'}{tx.quantity} {tx.action_type === 'sample' ? 'units (Sample 🎁)' : 'units'}
                       </span>
                       <span className="text-[9px] text-slate-500 block mt-0.5">
                         {tx.prev_stock} → {tx.new_stock}

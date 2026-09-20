@@ -18,7 +18,8 @@ export type StockStatus = 'In Stock' | 'Low Stock' | 'Out of Stock';
 export interface Sale {
   id: string;
   total_price: number;
-  payment_method?: 'cash' | 'upi' | 'card';
+  payment_method?: 'cash' | 'upi' | 'card' | 'sample';
+  is_sample?: boolean;
   customer_name?: string;
   customer_phone?: string;
   discount?: number;
@@ -48,7 +49,7 @@ export interface StockTransaction {
   id: string;
   product_id: string;
   product_name: string;
-  action_type: 'added' | 'removed' | 'adjusted' | 'sold';
+  action_type: 'added' | 'removed' | 'adjusted' | 'sold' | 'sample';
   quantity: number;
   prev_stock: number;
   new_stock: number;

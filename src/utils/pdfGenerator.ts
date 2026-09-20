@@ -124,14 +124,15 @@ export const generateSalesReportPDF = ({
       ? `${sale.customer_name}${sale.customer_phone ? ` (${sale.customer_phone})` : ''}`
       : '-';
 
+    const isSample = sale.payment_method === 'sample' || sale.is_sample;
     return [
       (index + 1).toString(),
       `#${sale.id.substring(5, 11).toUpperCase()}`,
       `${dateStr}\n${timeStr}`,
       customerStr,
       itemsText || 'Ice Cream Items',
-      (sale.payment_method || 'cash').toUpperCase(),
-      `+ Rs. ${sale.total_price.toLocaleString('en-IN')}`,
+      isSample ? 'FREE SAMPLE' : (sale.payment_method || 'cash').toUpperCase(),
+      isSample ? 'Rs. 0 (Free)' : `+ Rs. ${sale.total_price.toLocaleString('en-IN')}`,
     ];
   });
 
@@ -512,6 +513,7 @@ export const generateCompleteStatementPDF = ({
   const unifiedList: UnifiedTransaction[] = [
     ...sales.map((s) => {
       const d = new Date(s.created_at);
+      const isSample = s.payment_method === 'sample' || s.is_sample;
       const items = saleItems.filter((i) => i.sale_id === s.id);
       const itemsText = items.map((i) => `${i.product_name} (x${i.quantity})`).join(', ');
       return {
@@ -520,8 +522,10 @@ export const generateCompleteStatementPDF = ({
         timeStr: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
         type: 'sale' as const,
         ref: `#${s.id.substring(5, 11).toUpperCase()}`,
-        description: s.customer_name ? `${s.customer_name} • ${itemsText || 'Ice Cream'}` : itemsText || 'Ice Cream Sales',
-        mode: (s.payment_method || 'cash').toUpperCase(),
+        description: isSample
+          ? `[SAMPLE] ${s.customer_name ? `${s.customer_name} • ` : ''}${itemsText || 'Tasting Sample'}`
+          : s.customer_name ? `${s.customer_name} • ${itemsText || 'Ice Cream'}` : itemsText || 'Ice Cream Sales',
+        mode: isSample ? 'SAMPLE' : (s.payment_method || 'cash').toUpperCase(),
         amount: s.total_price,
       };
     }),
@@ -637,6 +641,7 @@ export const generateCompleteStatementPDF = ({
 // =========================================================================
 export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
   const shop = db.getShopSettings();
+  const isSample = sale.payment_method === 'sample' || sale.is_sample;
   const isUpi = sale.payment_method === 'upi';
   const isCard = sale.payment_method === 'card';
 
@@ -646,7 +651,9 @@ export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
     format: [105, 175], // Clean A6/A5 compact receipt format
   });
 
-  const primaryColor: [number, number, number] = isUpi
+  const primaryColor: [number, number, number] = isSample
+    ? [217, 119, 6] // Amber / Gold for promotional samples
+    : isUpi
     ? [124, 58, 237] // Violet
     : isCard
     ? [37, 99, 235] // Blue
@@ -670,7 +677,11 @@ export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text(`TAX INVOICE: #${sale.id.substring(5, 11).toUpperCase()}`, 8, 29);
+  doc.text(
+    isSample ? `SAMPLE SLIP: #${sale.id.substring(5, 11).toUpperCase()}` : `TAX INVOICE: #${sale.id.substring(5, 11).toUpperCase()}`,
+    8,
+    29
+  );
 
   const saleDate = new Date(sale.created_at);
   const dateStr = saleDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -683,17 +694,21 @@ export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
 
   if (sale.customer_name) {
     doc.setTextColor(30, 41, 59);
-    doc.text(`Customer: ${sale.customer_name} ${sale.customer_phone ? `(${sale.customer_phone})` : ''}`, 8, 38);
+    doc.text(
+      `${isSample ? 'Recipient / Client' : 'Customer'}: ${sale.customer_name} ${sale.customer_phone ? `(${sale.customer_phone})` : ''}`,
+      8,
+      38
+    );
   }
 
   // Payment badge box
-  doc.setFillColor(isUpi ? 243 : 236, isUpi ? 232 : 253, isUpi ? 255 : 245);
+  doc.setFillColor(isSample ? 254 : isUpi ? 243 : 236, isSample ? 243 : isUpi ? 232 : 253, isSample ? 199 : isUpi ? 255 : 245);
   doc.setDrawColor(...primaryColor);
-  doc.roundedRect(65, 26, 32, 8, 1.5, 1.5, 'FD');
-  doc.setFontSize(7.5);
+  doc.roundedRect(63, 26, 34, 8, 1.5, 1.5, 'FD');
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...primaryColor);
-  doc.text(isUpi ? 'PAID VIA UPI' : isCard ? 'PAID VIA CARD' : 'PAID IN CASH', 81, 31, { align: 'center' });
+  doc.text(isSample ? 'FREE SAMPLE (Rs. 0)' : isUpi ? 'PAID VIA UPI' : isCard ? 'PAID VIA CARD' : 'PAID IN CASH', 80, 31, { align: 'center' });
 
   // 3. ITEMS TABLE
   const startTableY = sale.customer_name ? 42 : 38;
@@ -701,8 +716,8 @@ export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
     (idx + 1).toString(),
     item.product_name,
     item.quantity.toString(),
-    `Rs.${item.price}`,
-    `Rs.${item.total.toLocaleString('en-IN')}`,
+    isSample ? 'Rs. 0 (Free)' : `Rs.${item.price}`,
+    isSample ? 'Rs. 0' : `Rs.${item.total.toLocaleString('en-IN')}`,
   ]);
 
   autoTable(doc, {
@@ -724,10 +739,10 @@ export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
     },
     columnStyles: {
       0: { cellWidth: 6, halign: 'center' },
-      1: { cellWidth: 46 },
+      1: { cellWidth: 44 },
       2: { cellWidth: 10, halign: 'center', fontStyle: 'bold' },
-      3: { cellWidth: 14, halign: 'right' },
-      4: { cellWidth: 16, halign: 'right', fontStyle: 'bold' },
+      3: { cellWidth: 18, halign: 'right' },
+      4: { cellWidth: 14, halign: 'right', fontStyle: 'bold' },
     },
   });
 
@@ -741,35 +756,50 @@ export const generateSingleInvoicePDF = (sale: Sale, items: SaleItem[]) => {
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Total Items: ${totalQty} units`, 8, finalY + 7);
+  doc.text(`Total Sample Items: ${totalQty} units`, 8, finalY + 7);
 
-  if (sale.discount && sale.discount > 0) {
+  if (sale.discount && sale.discount > 0 && !isSample) {
     doc.setTextColor(225, 29, 72);
     doc.text(`Discount: -Rs.${sale.discount}`, 8, finalY + 11);
   }
 
   // Grand Total Box
   doc.setFillColor(...primaryColor);
-  doc.roundedRect(8, finalY + (sale.discount ? 14 : 10), 89, 12, 2, 2, 'F');
+  doc.roundedRect(8, finalY + (sale.discount && !isSample ? 14 : 10), 89, 12, 2, 2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text('GRAND TOTAL PAID:', 12, finalY + (sale.discount ? 21.5 : 17.5));
+  doc.text(isSample ? 'SAMPLE TOTAL (FREE):' : 'GRAND TOTAL PAID:', 12, finalY + (sale.discount && !isSample ? 21.5 : 17.5));
   doc.setFontSize(11);
-  doc.text(`Rs. ${sale.total_price.toLocaleString('en-IN')}`, 93, finalY + (sale.discount ? 21.5 : 17.5), { align: 'right' });
+  doc.text(
+    isSample ? 'Rs. 0 (Free Trial)' : `Rs. ${sale.total_price.toLocaleString('en-IN')}`,
+    93,
+    finalY + (sale.discount && !isSample ? 21.5 : 17.5),
+    { align: 'right' }
+  );
 
   // 5. FOOTER & AUTHENTICITY NOTE
-  const footerY = finalY + (sale.discount ? 32 : 28);
+  const footerY = finalY + (sale.discount && !isSample ? 32 : 28);
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Thank you! Visit Creamee Ballz Again! 🍨', 52.5, footerY, { align: 'center' });
+  doc.text(
+    isSample ? 'Complimentary Tasting Sample - Creamee Ballz 🍨' : 'Thank you! Visit Creamee Ballz Again! 🍨',
+    52.5,
+    footerY,
+    { align: 'center' }
+  );
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(148, 163, 184);
-  doc.text('Computer Generated Smart Electronic Tax Invoice', 52.5, footerY + 4, { align: 'center' });
+  doc.text(
+    isSample ? 'Official Sample Dispatch Slip' : 'Computer Generated Smart Electronic Tax Invoice',
+    52.5,
+    footerY + 4,
+    { align: 'center' }
+  );
   doc.text(`Mo: ${shop.phone} | UPI: ${shop.upi_id}`, 52.5, footerY + 7.5, { align: 'center' });
 
-  doc.save(`Invoice_${sale.id.substring(5, 11).toUpperCase()}.pdf`);
+  doc.save(`${isSample ? 'Sample_Slip' : 'Invoice'}_${sale.id.substring(5, 11).toUpperCase()}.pdf`);
 };

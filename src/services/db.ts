@@ -585,10 +585,11 @@ export const db = {
   async createSale(
     cartItems: CartItem[],
     details?: {
-      payment_method?: 'cash' | 'upi' | 'card';
+      payment_method?: 'cash' | 'upi' | 'card' | 'sample';
       customer_name?: string;
       customer_phone?: string;
       discount?: number;
+      is_sample?: boolean;
     }
   ): Promise<Sale> {
     if (cartItems.length === 0) throw new Error('Cart is empty');
@@ -596,6 +597,7 @@ export const db = {
     const products = await this.getProducts();
     const now = new Date().toISOString();
     const saleId = `sale-${Date.now()}`;
+    const isSample = details?.payment_method === 'sample' || details?.is_sample === true;
 
     let subtotal = 0;
     const productsToUpdate: { product: Product; newStock: number; soldQty: number }[] = [];
@@ -620,7 +622,7 @@ export const db = {
         );
       }
 
-      const itemTotal = p.price * item.quantity;
+      const itemTotal = isSample ? 0 : p.price * item.quantity;
       subtotal += itemTotal;
 
       const newStock = p.current_stock - item.quantity;
@@ -636,7 +638,7 @@ export const db = {
         product_id: p.id,
         product_name: p.name,
         quantity: item.quantity,
-        price: p.price,
+        price: isSample ? 0 : p.price,
         total: itemTotal,
       });
 
@@ -644,22 +646,25 @@ export const db = {
         id: `tx-sale-${p.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         product_id: p.id,
         product_name: p.name,
-        action_type: 'sold',
+        action_type: isSample ? 'sample' : 'sold',
         quantity: item.quantity,
         prev_stock: p.current_stock,
         new_stock: newStock,
-        notes: `Bill #${saleId.substring(5, 11).toUpperCase()} sold (-${item.quantity})`,
+        notes: isSample
+          ? `🎁 Sample #${saleId.substring(5, 11).toUpperCase()} dispatched (${details?.customer_name ? details.customer_name : 'Client'}) (-${item.quantity})`
+          : `Bill #${saleId.substring(5, 11).toUpperCase()} sold (-${item.quantity})`,
         created_at: now,
       });
     }
 
     const discount = details?.discount || 0;
-    const finalTotal = Math.max(0, subtotal - discount);
+    const finalTotal = isSample ? 0 : Math.max(0, subtotal - discount);
 
     const newSale: Sale = {
       id: saleId,
       total_price: finalTotal,
       payment_method: details?.payment_method || 'cash',
+      is_sample: isSample,
       customer_name: details?.customer_name?.trim() || undefined,
       customer_phone: details?.customer_phone?.trim() || undefined,
       discount: discount > 0 ? discount : undefined,
