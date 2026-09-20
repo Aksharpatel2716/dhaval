@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../services/db';
-import { Sale, SaleItem, Expense } from '../types';
+import { Sale, SaleItem, Expense, DeletedSaleRecord } from '../types';
 import {
   FileText,
   Search,
@@ -30,6 +30,7 @@ import {
   Sparkles,
   PlusCircle,
   Gift,
+  AlertOctagon,
 } from 'lucide-react';
 import { ReceiptModal } from '../components/ReceiptModal';
 import {
@@ -86,6 +87,14 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       return [];
     }
   });
+  const [deletedSales, setDeletedSales] = useState<DeletedSaleRecord[]>(() => {
+    try {
+      const ds = localStorage.getItem('icecream_db_deleted_sales');
+      return ds ? JSON.parse(ds) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Active Main View: 'sales' | 'samples' | 'expenses' | 'summary'
@@ -128,9 +137,11 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       const sls = await db.getSales();
       const items = await db.getSaleItems();
       const exps = await db.getExpenses();
+      const dels = await db.getDeletedSales();
       if (sls) setSales(sls);
       if (items) setSaleItems(items);
       if (exps) setExpenses(exps);
+      if (dels) setDeletedSales(dels);
     } catch {
       console.warn('SalesHistory loadAllData fallback');
     } finally {
@@ -456,6 +467,20 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
     }
   };
 
+  // Delete Bill Handler (Restores Stock & Removes from Hisab)
+  const handleDeleteSale = async (saleId: string) => {
+    try {
+      const res = await db.deleteSale(saleId);
+      triggerToast(
+        `Bill #${saleId.substring(5, 11).toUpperCase()} deleted! +${res.restoredUnitsCount} items returned to stock & -₹${res.refundedAmount} removed from Hisab! 🍨`,
+        'success'
+      );
+      await loadAllData();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete bill', 'error');
+    }
+  };
+
   // PDF Download Handlers
   const handleDownloadSalesPDF = (type: 'cash' | 'upi' | 'all') => {
     const targetSales = type === 'cash' ? cashSales : type === 'upi' ? upiSales : dateFilteredSales;
@@ -486,7 +511,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   };
 
   const handleDownloadCompleteStatementPDF = () => {
-    if (dateFilteredExpenses.length === 0 && dateFilteredSales.length === 0) {
+    if (dateFilteredExpenses.length === 0 && dateFilteredSales.length === 0 && deletedSales.length === 0) {
       triggerToast('No sales or expenses data found for this period to export!', 'warning');
       return;
     }
@@ -494,6 +519,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       sales: dateFilteredSales,
       saleItems,
       expenses: dateFilteredExpenses,
+      deletedSales,
       dateLabel: getDateLabel(),
     });
     triggerToast('Downloaded Complete Master Financial Statement PDF! 📄', 'success');
@@ -1179,6 +1205,74 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               </div>
             </div>
           </div>
+
+          {/* Deleted Bills Statement & Audit Trail Section */}
+          {deletedSales.length > 0 && (
+            <div className="bg-slate-900/90 border border-rose-500/30 rounded-2xl p-4 space-y-3 shadow-lg shadow-rose-950/20">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    <Trash2 className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Deleted Bills Statement (રદ કરેલા બિલ / સ્ટોક રીટર્ન)</span>
+                      <span className="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full border border-rose-500/30">
+                        {deletedSales.length} Deleted
+                      </span>
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      All item quantities are returned (+) to inventory & sales revenue is deducted (-) from Net Hisab
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {deletedSales.slice(0, 10).map((del) => (
+                  <div
+                    key={del.id}
+                    className="p-3 bg-slate-950/90 rounded-xl border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-rose-400 font-mono">
+                          ❌ #{del.original_bill_no}
+                        </span>
+                        <span className="text-[9px] bg-rose-500/20 text-rose-300 font-black px-1.5 py-0.5 rounded border border-rose-500/30">
+                          BILL DELETED
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Deleted on {new Date(del.deleted_at).toLocaleDateString('en-IN')} at {new Date(del.deleted_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-300 font-semibold truncate">
+                        Stock Returned: <span className="text-emerald-400 font-bold">+{del.restored_units_count} units</span>
+                        {del.restored_items && del.restored_items.length > 0 && (
+                          <span className="text-slate-400 text-[11px] ml-1">
+                            ({del.restored_items.map((i) => `${i.product_name} (+${i.quantity})`).join(', ')})
+                          </span>
+                        )}
+                      </p>
+                      {del.customer_name && (
+                        <p className="text-[10px] text-slate-400">
+                          Original Customer: <span className="text-slate-300 font-bold">{del.customer_name}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-left sm:text-right shrink-0">
+                      <span className="text-[10px] text-slate-500 block font-semibold uppercase">Hisab Voided</span>
+                      <span className="text-sm font-black text-rose-400 line-through">
+                        ₹{del.total_price.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : mainView === 'samples' ? (
         /* ========================================================================= */
@@ -1246,27 +1340,42 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                     </p>
                   </div>
 
-                  {/* Right Action */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
-                    <div className="text-left sm:text-right">
-                      <span className="text-[10px] text-amber-400/80 font-bold block uppercase">Bill Total</span>
-                      <span className="text-lg font-black text-amber-400">₹0 (FREE)</span>
-                    </div>
+                    {/* Right Action */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                      <div className="text-left sm:text-right pr-1">
+                        <span className="text-[10px] text-amber-400/80 font-bold block uppercase">Bill Total</span>
+                        <span className="text-lg font-black text-amber-400">₹0 (FREE)</span>
+                      </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenReceipt(sale);
-                      }}
-                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1 shadow-md shadow-amber-950"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>View Slip</span>
-                    </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenReceipt(sale);
+                        }}
+                        className="px-3 py-2 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1 shadow-md shadow-amber-950"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>View Slip</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
+                          const confirmMsg = `Delete Sample Slip #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} sample items will be RETURNED (+) to stock\n\nશું તમે આ સેમ્પલ સ્લીપ ડિલીટ કરવા માંગો છો? સ્ટોકમાં જમા થઈ જશે.`;
+                          if (window.confirm(confirmMsg)) {
+                            handleDeleteSale(sale.id);
+                          }
+                        }}
+                        className="p-2 bg-slate-950 hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 rounded-xl border border-white/5 transition active:scale-90"
+                        title="Delete Sample Slip"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })
           ) : (
             <div className="py-14 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-3 p-4">
               <Gift className="w-10 h-10 mx-auto text-amber-400 animate-bounce" />
@@ -1432,8 +1541,8 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                   </div>
 
                   {/* Right: Bill Amount & Actions */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
-                    <div className="text-left sm:text-right">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                    <div className="text-left sm:text-right pr-1">
                       <span className="text-[10px] text-slate-400 font-bold block uppercase">
                         {isSample ? '🎁 Sample Total' : isUpi ? 'UPI Amount' : 'Cash Amount'}
                       </span>
@@ -1447,7 +1556,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                         e.stopPropagation();
                         handleOpenReceipt(sale);
                       }}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md ${
+                      className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md active:scale-95 ${
                         isSample
                           ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950'
                           : 'bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-200 hover:text-white'
@@ -1455,6 +1564,21 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>{isSample ? 'View Slip' : 'View Bill'}</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
+                        const confirmMsg = `Are you sure you want to DELETE ${isSample ? 'Sample Slip' : 'Bill'} #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} items will be RETURNED (+) to Stock\n• ₹${sale.total_price} will be REMOVED (-) from Sales Hisab\n\nશું તમે આ બિલ ડિલીટ કરવા માંગો છો? આઈસ્ક્રીમ સ્ટોકમાં પાછો જમા થઈ જશે.`;
+                        if (window.confirm(confirmMsg)) {
+                          handleDeleteSale(sale.id);
+                        }
+                      }}
+                      className="p-2 bg-slate-950 hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 rounded-xl border border-white/5 transition active:scale-90"
+                      title="Delete Bill & Return Stock"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -1898,6 +2022,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
         onClose={() => setShowReceipt(false)}
         sale={selectedSale}
         items={receiptItems}
+        onDeleteSale={handleDeleteSale}
       />
     </div>
   );

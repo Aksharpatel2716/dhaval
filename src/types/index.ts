@@ -23,6 +23,8 @@ export interface Sale {
   customer_name?: string;
   customer_phone?: string;
   discount?: number;
+  status?: 'completed' | 'deleted';
+  deleted_at?: string;
   created_at: string;
 }
 
@@ -76,4 +78,24 @@ export interface StockSecurity {
   password: string;
   is_enabled: boolean;
   created_at: string;
+}
+
+export interface DeletedSaleRecord {
+  id: string;
+  original_bill_no: string;
+  total_price: number;
+  payment_method?: 'cash' | 'upi' | 'card' | 'sample';
+  customer_name?: string;
+  customer_phone?: string;
+  is_sample?: boolean;
+  restored_items: {
+    product_id: string;
+    product_name: string;
+    quantity: number;
+    price: number;
+  }[];
+  restored_units_count: number;
+  deleted_at: string;
+  original_created_at: string;
+  notes: string;
 }

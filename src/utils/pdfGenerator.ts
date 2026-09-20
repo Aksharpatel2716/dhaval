@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Sale, SaleItem, Expense } from '../types';
+import { Sale, SaleItem, Expense, DeletedSaleRecord } from '../types';
 import { db } from '../services/db';
 
 interface PDFReportOptions {
@@ -388,6 +388,7 @@ interface MasterStatementOptions {
   sales: Sale[];
   saleItems: SaleItem[];
   expenses: Expense[];
+  deletedSales?: DeletedSaleRecord[];
   dateLabel: string;
 }
 
@@ -395,6 +396,7 @@ export const generateCompleteStatementPDF = ({
   sales,
   saleItems,
   expenses,
+  deletedSales = [],
   dateLabel,
 }: MasterStatementOptions) => {
   const shop = db.getShopSettings();
@@ -505,7 +507,7 @@ export const generateCompleteStatementPDF = ({
     time: number;
     dateStr: string;
     timeStr: string;
-    type: 'sale' | 'expense';
+    type: 'sale' | 'expense' | 'deleted_sale';
     ref: string;
     description: string;
     mode: string;
@@ -544,18 +546,43 @@ export const generateCompleteStatementPDF = ({
         amount: e.amount,
       };
     }),
+    ...deletedSales.map((del) => {
+      const d = new Date(del.deleted_at);
+      const itemsText = del.restored_items.map((i) => `${i.product_name} (+${i.quantity})`).join(', ');
+      return {
+        time: d.getTime(),
+        dateStr: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        timeStr: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        type: 'deleted_sale' as const,
+        ref: `[BILL DELETED] #${del.original_bill_no}`,
+        description: `❌ BILL DELETED (Stock Restored: +${del.restored_units_count} units • ${itemsText || 'Ice Cream'})`,
+        mode: 'DELETED',
+        amount: del.total_price,
+      };
+    }),
   ].sort((a, b) => a.time - b.time);
 
   let runningBalance = 0;
   const tableRows = unifiedList.map((tx, idx) => {
     if (tx.type === 'sale') {
       runningBalance += tx.amount;
-    } else {
+    } else if (tx.type === 'expense') {
       runningBalance -= tx.amount;
     }
 
-    const typeLabel = tx.type === 'sale' ? '(+) SALE' : '(-) EXPENSE';
-    const amountLabel = tx.type === 'sale' ? `+ Rs.${tx.amount.toLocaleString('en-IN')}` : `- Rs.${tx.amount.toLocaleString('en-IN')}`;
+    const typeLabel =
+      tx.type === 'sale'
+        ? '(+) SALE'
+        : tx.type === 'expense'
+        ? '(-) EXPENSE'
+        : '❌ [BILL DELETED]';
+
+    const amountLabel =
+      tx.type === 'sale'
+        ? `+ Rs.${tx.amount.toLocaleString('en-IN')}`
+        : tx.type === 'expense'
+        ? `- Rs.${tx.amount.toLocaleString('en-IN')}`
+        : `[Void -Rs.${tx.amount}]`;
 
     return [
       (idx + 1).toString(),
@@ -589,7 +616,7 @@ export const generateCompleteStatementPDF = ({
     columnStyles: {
       0: { cellWidth: 7, halign: 'center' },
       1: { cellWidth: 26 },
-      2: { cellWidth: 22, fontStyle: 'bold', halign: 'center' },
+      2: { cellWidth: 24, fontStyle: 'bold', halign: 'center' },
       3: { cellWidth: 'auto' },
       4: { cellWidth: 16, fontStyle: 'bold', halign: 'center' },
       5: { cellWidth: 28, fontStyle: 'bold', halign: 'right' },
@@ -602,6 +629,9 @@ export const generateCompleteStatementPDF = ({
           data.cell.styles.textColor = [15, 23, 42]; // Jet Black for (+)
         } else if (text.includes('(-)')) {
           data.cell.styles.textColor = [225, 29, 72]; // Red for (-)
+        } else if (text.includes('DELETED') || text.includes('Void')) {
+          data.cell.styles.textColor = [225, 29, 72]; // Red for deleted bill
+          data.cell.styles.fontStyle = 'bold';
         }
       }
     },
@@ -610,7 +640,7 @@ export const generateCompleteStatementPDF = ({
         '',
         '',
         '',
-        `SUMMARY: (+) Sales Rs.${totalSales} | (-) Expenses Rs.${totalExpenses}`,
+        `SUMMARY: (+) Sales Rs.${totalSales} | (-) Expenses Rs.${totalExpenses}${deletedSales.length > 0 ? ` | (${deletedSales.length} Bill(s) Deleted)` : ''}`,
         '',
         `NET RESULT:`,
         `${netProfit >= 0 ? '+' : ''}Rs.${netProfit.toLocaleString('en-IN')}`,

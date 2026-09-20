@@ -302,6 +302,22 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
     }
   };
 
+  const handleDeleteLastSale = async (saleId: string) => {
+    try {
+      const res = await db.deleteSale(saleId);
+      triggerToast(
+        `Bill #${saleId.substring(5, 11).toUpperCase()} deleted! +${res.restoredUnitsCount} items returned to stock 🍨`,
+        'info'
+      );
+      await loadProducts();
+      setShowReceipt(false);
+      setLastSale(null);
+      setLastSaleItems([]);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete bill', 'error');
+    }
+  };
+
   // Get categories from products
   const dynamicCategories = ['All', ...Array.from(new Set(products.map((p) => p.category)))];
 
@@ -1036,6 +1052,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
         onClose={() => setShowReceipt(false)}
         sale={lastSale}
         items={lastSaleItems}
+        onDeleteSale={handleDeleteLastSale}
       />
     </div>
   );

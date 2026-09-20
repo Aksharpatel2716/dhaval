@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Product, Sale, SaleItem, Expense, StockTransaction, CartItem, ShopSettings, StockSecurity } from '../types';
+import { Product, Sale, SaleItem, Expense, StockTransaction, CartItem, ShopSettings, StockSecurity, DeletedSaleRecord } from '../types';
 
 // Configuration keys for localStorage
 const SB_URL_KEY = 'icecream_supabase_url';
@@ -89,6 +89,7 @@ const LOCAL_SALES = 'icecream_db_sales';
 const LOCAL_SALE_ITEMS = 'icecream_db_sale_items';
 const LOCAL_EXPENSES = 'icecream_db_expenses';
 const LOCAL_TRANSACTIONS = 'icecream_db_transactions';
+const LOCAL_DELETED_SALES = 'icecream_db_deleted_sales';
 
 export const initialProducts: Product[] = [
   {
@@ -734,16 +735,134 @@ export const db = {
             })
             .eq('id', item.product.id);
         }
-
-        await supabase.from('stock_transactions').insert(
-          newTransactions.map(({ product_name, ...tx }) => tx)
-        );
       } catch (err) {
-        console.warn('Supabase sync warning (data safely preserved in local storage):', err);
+        console.warn('Supabase sale insert error:', err);
       }
     }
 
     return newSale;
+  },
+
+  async deleteSale(saleId: string): Promise<{ restoredItemsCount: number; restoredUnitsCount: number; refundedAmount: number; deletedRecord: DeletedSaleRecord }> {
+    const sales = await this.getSales();
+    const sale = sales.find((s) => s.id === saleId);
+    if (!sale) throw new Error('Sale/Bill not found');
+
+    const saleItems = await this.getSaleItems();
+    const itemsToDelete = saleItems.filter((i) => i.sale_id === saleId);
+    const products = await this.getProducts();
+
+    const now = new Date().toISOString();
+    const newTransactions: StockTransaction[] = [];
+    let totalRestoredUnits = 0;
+
+    // 1. Restore stock (+) and decrease sold_quantity (-) for every item sold in this bill
+    for (const item of itemsToDelete) {
+      const prodIndex = products.findIndex((p) => p.id === item.product_id);
+      if (prodIndex > -1) {
+        const p = products[prodIndex];
+        const prevStock = p.current_stock;
+        const newStock = prevStock + item.quantity;
+        p.current_stock = newStock;
+        p.sold_quantity = Math.max(0, (p.sold_quantity || 0) - item.quantity);
+        p.updated_at = now;
+        totalRestoredUnits += item.quantity;
+
+        newTransactions.push({
+          id: `tx-del-${p.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          product_id: p.id,
+          product_name: p.name,
+          action_type: 'added',
+          quantity: item.quantity,
+          prev_stock: prevStock,
+          new_stock: newStock,
+          notes: `❌ BILL DELETED #${sale.id.substring(5, 11).toUpperCase()}: Stock returned +${item.quantity} units (${p.name})`,
+          created_at: now,
+        });
+      }
+    }
+
+    // 2. Persist updated products to localStorage & Supabase
+    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
+
+    // 3. Remove sale from active sales list
+    const remainingSales = sales.filter((s) => s.id !== saleId);
+    localStorage.setItem(LOCAL_SALES, JSON.stringify(remainingSales));
+
+    // 4. Remove sale items from active sale items list
+    const remainingItems = saleItems.filter((i) => i.sale_id !== saleId);
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(remainingItems));
+
+    // 5. Append stock transactions to local storage
+    const existingTxsStr = localStorage.getItem(LOCAL_TRANSACTIONS);
+    const existingTxs: StockTransaction[] = existingTxsStr ? JSON.parse(existingTxsStr) : [];
+    const updatedTxs = [...newTransactions, ...existingTxs];
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(updatedTxs));
+
+    // 6. Record deleted sale in audit history
+    const deletedRecord: DeletedSaleRecord = {
+      id: sale.id,
+      original_bill_no: sale.id.substring(5, 11).toUpperCase(),
+      total_price: sale.total_price,
+      payment_method: sale.payment_method,
+      customer_name: sale.customer_name,
+      customer_phone: sale.customer_phone,
+      is_sample: sale.is_sample,
+      restored_items: itemsToDelete.map((it) => ({
+        product_id: it.product_id,
+        product_name: it.product_name,
+        quantity: it.quantity,
+        price: it.price,
+      })),
+      restored_units_count: totalRestoredUnits,
+      deleted_at: now,
+      original_created_at: sale.created_at,
+      notes: `❌ BILL DELETED #${sale.id.substring(5, 11).toUpperCase()}: Stock returned (+${totalRestoredUnits} items), -₹${sale.total_price} removed from Sales Hisab`,
+    };
+
+    const existingDelStr = localStorage.getItem(LOCAL_DELETED_SALES);
+    const existingDel: DeletedSaleRecord[] = existingDelStr ? JSON.parse(existingDelStr) : [];
+    const updatedDel = [deletedRecord, ...existingDel];
+    localStorage.setItem(LOCAL_DELETED_SALES, JSON.stringify(updatedDel));
+
+    // 7. Sync deletion and stock return to Supabase Cloud if connected
+    if (supabase) {
+      try {
+        await supabase.from('sale_items').delete().eq('sale_id', saleId);
+        await supabase.from('sales').delete().eq('id', saleId);
+
+        for (const item of itemsToDelete) {
+          const p = products.find((prod) => prod.id === item.product_id);
+          if (p) {
+            await supabase.from('products').update({
+              current_stock: p.current_stock,
+              sold_quantity: p.sold_quantity,
+              updated_at: now,
+            }).eq('id', p.id);
+          }
+        }
+
+        if (newTransactions.length > 0) {
+          await supabase.from('stock_transactions').insert(
+            newTransactions.map(({ product_name, ...tx }) => tx)
+          );
+        }
+      } catch (err) {
+        console.warn('Supabase deleteSale sync fallback:', err);
+      }
+    }
+
+    return {
+      restoredItemsCount: itemsToDelete.length,
+      restoredUnitsCount: totalRestoredUnits,
+      refundedAmount: sale.total_price,
+      deletedRecord,
+    };
+  },
+
+  async getDeletedSales(): Promise<DeletedSaleRecord[]> {
+    const localStr = localStorage.getItem(LOCAL_DELETED_SALES);
+    return localStr ? JSON.parse(localStr) : [];
   },
 
   async getSales(): Promise<Sale[]> {
@@ -934,6 +1053,7 @@ export const db = {
     localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
     localStorage.setItem(LOCAL_EXPENSES, JSON.stringify([]));
     localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_DELETED_SALES, JSON.stringify([]));
   },
 
   async wipeAllData(includeProducts: boolean = true): Promise<void> {
@@ -955,6 +1075,7 @@ export const db = {
     localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
     localStorage.setItem(LOCAL_EXPENSES, JSON.stringify([]));
     localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_DELETED_SALES, JSON.stringify([]));
     if (includeProducts) {
       localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify([]));
     }
@@ -968,6 +1089,7 @@ export const db = {
       sale_items: localStorage.getItem(LOCAL_SALE_ITEMS),
       expenses: localStorage.getItem(LOCAL_EXPENSES),
       transactions: localStorage.getItem(LOCAL_TRANSACTIONS),
+      deleted_sales: localStorage.getItem(LOCAL_DELETED_SALES),
       settings: localStorage.getItem(SHOP_SETTINGS_KEY),
       security: localStorage.getItem(STOCK_SECURITY_KEY),
       exported_at: new Date().toISOString(),
@@ -983,6 +1105,7 @@ export const db = {
       if (data.sale_items) localStorage.setItem(LOCAL_SALE_ITEMS, data.sale_items);
       if (data.expenses) localStorage.setItem(LOCAL_EXPENSES, data.expenses);
       if (data.transactions) localStorage.setItem(LOCAL_TRANSACTIONS, data.transactions);
+      if (data.deleted_sales) localStorage.setItem(LOCAL_DELETED_SALES, data.deleted_sales);
       if (data.settings) localStorage.setItem(SHOP_SETTINGS_KEY, data.settings);
       if (data.security) localStorage.setItem(STOCK_SECURITY_KEY, data.security);
       return true;
