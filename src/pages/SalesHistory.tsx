@@ -1210,26 +1210,17 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                       <p className="text-[11px] text-slate-400 italic">Free Walk-in Tasting Sample</p>
                     )}
 
-                    {/* Sample Items Dispatched */}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {items.length > 0 ? (
-                        items.map((item) => (
-                          <span
-                            key={item.id}
-                            className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-950/80 text-amber-200 border border-amber-500/40 flex items-center gap-1.5 shadow-sm"
-                          >
-                            <span>🍨 {item.product_name}</span>
-                            <span className="bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-black">×{item.quantity}</span>
-                            <span className="text-amber-300 font-bold">(Free ₹0)</span>
-                            <span className="text-[9px] text-amber-400 font-bold">📉 Stock -{item.quantity}</span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-950/60 text-amber-300 border border-amber-500/30">
-                          🍨 Complimentary Tasting Samples (Stock Deducted)
-                        </span>
-                      )}
-                    </div>
+                    {/* Compact 1-line Items Summary for Phone-Friendly Card */}
+                    <p className="text-[11px] text-amber-200/90 font-medium truncate flex items-center gap-1.5 pt-0.5">
+                      <span>🍨</span>
+                      <span className="truncate">
+                        {items.length === 0
+                          ? 'Sample Pack (₹0 Free)'
+                          : items.length === 1
+                          ? `${items[0].product_name} (Qty: ${items[0].quantity})`
+                          : `${items[0].product_name} +${items.length - 1} more (${items.reduce((s, i) => s + i.quantity, 0)} scoops)`}
+                      </span>
+                    </p>
                   </div>
 
                   {/* Right Action */}
@@ -1404,24 +1395,17 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                       <p className="text-[11px] text-amber-200/80 italic font-semibold">👤 Walk-in Free Tasting Sample</p>
                     ) : null}
 
-                    {/* Dispatched Items */}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {items.map((item) => (
-                        <span
-                          key={item.id}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-1 ${
-                            isSample
-                              ? 'bg-amber-950/80 text-amber-200 border-amber-500/40'
-                              : 'bg-slate-950 text-slate-300 border-white/5'
-                          }`}
-                        >
-                          <span>🍨 {item.product_name}</span>
-                          <span className={isSample ? 'bg-amber-500 text-slate-950 px-1 py-0.2 rounded font-black' : 'text-white'}>×{item.quantity}</span>
-                          <span className={isSample ? 'text-amber-300 font-bold' : 'text-slate-400'}>({isSample ? '₹0 Free' : `₹${item.price}`})</span>
-                          {isSample && <span className="text-[9px] text-amber-400 font-bold ml-0.5">📉 Stock -{item.quantity}</span>}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Compact 1-line Items Summary for Phone-Friendly Card */}
+                    <p className="text-[11px] text-slate-300 font-medium truncate flex items-center gap-1.5 pt-0.5">
+                      <span>🍨</span>
+                      <span className="truncate">
+                        {items.length === 0
+                          ? isSample ? 'Free Tasting Sample Pack (₹0)' : 'Ice Cream Item'
+                          : items.length === 1
+                          ? `${items[0].product_name} × ${items[0].quantity} (${isSample ? '₹0 Free' : `₹${items[0].price}`})`
+                          : `${items[0].product_name} +${items.length - 1} more (${items.reduce((s, i) => s + i.quantity, 0)} items)`}
+                      </span>
+                    </p>
                   </div>
 
                   {/* Right: Bill Amount & Actions */}
