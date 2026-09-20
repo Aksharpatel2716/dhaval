@@ -60,6 +60,7 @@ export interface StockTransaction {
 export interface CartItem {
   product: Product;
   quantity: number;
+  custom_price?: number;
 }
 
 export interface ShopSettings {

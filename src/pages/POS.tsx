@@ -134,13 +134,29 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
     setCart((prevCart) => prevCart.filter((i) => i.product.id !== productId));
   };
 
+  // Custom Price Override Handler
+  const handleUpdateItemPrice = (productId: string, newPrice: string | number) => {
+    setCart((prevCart) =>
+      prevCart.map((item) => {
+        if (item.product.id !== productId) return item;
+        return {
+          ...item,
+          custom_price: newPrice === '' ? undefined : Math.max(0, Number(newPrice)),
+        };
+      })
+    );
+  };
+
   const handleClearCart = () => {
     setCart([]);
     setIsCheckoutOpen(false);
   };
 
   const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const cartSubtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const cartSubtotal = cart.reduce((acc, item) => {
+    const price = item.custom_price !== undefined ? Number(item.custom_price) : item.product.price;
+    return acc + price * item.quantity;
+  }, 0);
   const finalTotal = Math.max(0, cartSubtotal - (discountAmount || 0));
 
   // Checkout Complete (With Stock Minus & Error Prevention)
@@ -179,15 +195,18 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
       });
 
       // 2. Prepare receipt items
-      const receiptItems: SaleItem[] = cart.map((item) => ({
-        id: `sitem-${item.product.id}-${Date.now()}`,
-        sale_id: confirmedSale.id,
-        product_id: item.product.id,
-        product_name: item.product.name,
-        quantity: item.quantity,
-        price: isSample ? 0 : item.product.price,
-        total: isSample ? 0 : item.product.price * item.quantity,
-      }));
+      const receiptItems: SaleItem[] = cart.map((item) => {
+        const unitPrice = isSample ? 0 : (item.custom_price !== undefined ? Number(item.custom_price) : item.product.price);
+        return {
+          id: `sitem-${item.product.id}-${Date.now()}`,
+          sale_id: confirmedSale.id,
+          product_id: item.product.id,
+          product_name: item.product.name,
+          quantity: item.quantity,
+          price: unitPrice,
+          total: unitPrice * item.quantity,
+        };
+      });
 
       // 3. Check for low stock (<= 10) or out of stock (0) to warn user
       cart.forEach((item) => {
@@ -488,43 +507,90 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
               </div>
             </div>
 
-            {/* Cart Items Summary */}
-            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+            {/* Cart Items Summary (With Price Modification Authority) */}
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
               {cart.map((item) => {
                 const prod = products.find((p) => p.id === item.product.id);
                 const isMax = prod ? item.quantity >= prod.current_stock : false;
+                const unitPrice = item.custom_price !== undefined ? item.custom_price : item.product.price;
+                const isPriceModified = item.custom_price !== undefined && item.custom_price !== item.product.price;
 
                 return (
-                  <div key={item.product.id} className="bg-slate-950 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
-                    <div className="min-w-0 flex-1 pr-2">
-                      <p className="text-xs font-bold text-white truncate">{item.product.name}</p>
-                      <p className="text-[11px] text-slate-400">
-                        ₹{item.product.price} × {item.quantity} = <span className="text-purple-300 font-bold">₹{item.product.price * item.quantity}</span>
-                      </p>
+                  <div key={item.product.id} className="bg-slate-950 p-2.5 rounded-2xl border border-white/10 space-y-2">
+                    {/* Top Row: Product Name & Quantity */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate">{item.product.name}</p>
+                        <p className="text-[10px] text-slate-400">
+                          Default MRP: ₹{item.product.price}/unit
+                        </p>
+                      </div>
+
+                      {/* Quantity Stepper */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleUpdateQuantity(item.product.id, -1)}
+                          className="w-7 h-7 flex items-center justify-center bg-slate-900 text-slate-300 active:scale-90 rounded-lg border border-white/5"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-xs font-black text-white w-6 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => handleUpdateQuantity(item.product.id, 1)}
+                          disabled={isMax}
+                          className={`w-7 h-7 flex items-center justify-center rounded-lg active:scale-90 ${
+                            isMax ? 'bg-slate-900 text-slate-600 cursor-not-allowed' : 'bg-purple-600 text-white'
+                          }`}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveFromCart(item.product.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 active:scale-90 transition ml-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleUpdateQuantity(item.product.id, -1)}
-                        className="w-7 h-7 flex items-center justify-center bg-slate-900 text-slate-300 active:scale-90 rounded-lg"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-xs font-black text-white w-5 text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => handleUpdateQuantity(item.product.id, 1)}
-                        disabled={isMax}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg active:scale-90 ${
-                          isMax ? 'bg-slate-900 text-slate-600 cursor-not-allowed' : 'bg-purple-600 text-white'
-                        }`}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleRemoveFromCart(item.product.id)}
-                        className="p-1 text-slate-500 hover:text-rose-400 ml-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+
+                    {/* Bottom Row: Inline Price Editing Authority */}
+                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/5 bg-slate-900/60 -mx-1 px-2.5 py-1.5 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1">
+                          <span>Rate:</span>
+                        </span>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-2 text-xs font-black text-slate-400">₹</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={item.custom_price ?? item.product.price}
+                            onChange={(e) => handleUpdateItemPrice(item.product.id, e.target.value)}
+                            className={`w-20 pl-5 pr-1.5 py-1 bg-slate-950 border rounded-lg text-xs font-black outline-none transition ${
+                              isPriceModified
+                                ? 'border-amber-500/80 bg-amber-950/30 text-amber-300 ring-1 ring-amber-500/40'
+                                : 'border-white/10 text-white focus:border-purple-500'
+                            }`}
+                            placeholder="Price"
+                          />
+                        </div>
+                        {isPriceModified && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateItemPrice(item.product.id, '')}
+                            className="text-[9px] text-amber-400 hover:text-amber-300 font-bold underline whitespace-nowrap"
+                            title="Reset to original default price"
+                          >
+                            Reset ₹{item.product.price}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black text-white">
+                          ₹{(unitPrice * item.quantity).toLocaleString('en-IN')}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );

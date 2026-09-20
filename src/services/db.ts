@@ -623,7 +623,8 @@ export const db = {
         );
       }
 
-      const itemTotal = isSample ? 0 : p.price * item.quantity;
+      const unitPrice = isSample ? 0 : (item.custom_price !== undefined ? Number(item.custom_price) : p.price);
+      const itemTotal = isSample ? 0 : unitPrice * item.quantity;
       subtotal += itemTotal;
 
       const newStock = p.current_stock - item.quantity;
@@ -639,7 +640,7 @@ export const db = {
         product_id: p.id,
         product_name: p.name,
         quantity: item.quantity,
-        price: isSample ? 0 : p.price,
+        price: unitPrice,
         total: itemTotal,
       });
 
