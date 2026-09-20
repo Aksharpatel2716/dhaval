@@ -88,11 +88,11 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   });
   const [loading, setLoading] = useState(false);
 
-  // Active Main View: 'summary' | 'sales' | 'expenses'
-  const [mainView, setMainView] = useState<'summary' | 'sales' | 'expenses'>('summary');
+  // Active Main View: 'sales' | 'samples' | 'expenses' | 'summary'
+  const [mainView, setMainView] = useState<'sales' | 'samples' | 'expenses' | 'summary'>('sales');
 
-  // Sub-filter for payment mode: 'all' | 'cash' | 'upi' | 'sample'
-  const [activePaymentTab, setActivePaymentTab] = useState<'all' | 'cash' | 'upi' | 'sample'>('all');
+  // Sub-filter for payment mode: 'all' | 'sample' | 'cash' | 'upi' | 'paid'
+  const [activePaymentTab, setActivePaymentTab] = useState<'all' | 'sample' | 'cash' | 'upi' | 'paid'>('all');
 
   // Time / Date range filter
   const [dateFilterPreset, setDateFilterPreset] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
@@ -214,6 +214,12 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   const cardSales = paidSales.filter((s) => s.payment_method === 'card');
   const totalSamplesGiven = sampleSales.length;
 
+  // Total items dispatched in free sample bills
+  const totalSampleItemsCount = sampleSales.reduce((acc, s) => {
+    const items = saleItems.filter((i) => i.sale_id === s.id);
+    return acc + items.reduce((sum, item) => sum + item.quantity, 0);
+  }, 0);
+
   // Expense Pools
   const cashExpenses = dateFilteredExpenses.filter((e) => e.payment_method === 'cash');
   const upiExpenses = dateFilteredExpenses.filter((e) => e.payment_method === 'upi');
@@ -232,11 +238,13 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   const netUpiBankBalance = totalUpiSales - totalUpiExpenseAmount;
   const netShopProfit = totalSalesRevenue - totalExpenseAmount;
 
-  // Search filtered Sales
+  // Search filtered Sales (Supporting All, Sample, Paid, Cash, UPI)
   const displaySales = dateFilteredSales.filter((s) => {
-    if (activePaymentTab === 'sample' && s.payment_method !== 'sample' && !s.is_sample) return false;
-    if (activePaymentTab === 'cash' && (s.payment_method !== 'cash' || s.is_sample) && s.payment_method !== undefined) return false;
-    if (activePaymentTab === 'upi' && (s.payment_method !== 'upi' || s.is_sample)) return false;
+    const isSample = s.payment_method === 'sample' || s.is_sample;
+    if (activePaymentTab === 'sample' && !isSample) return false;
+    if (activePaymentTab === 'paid' && isSample) return false;
+    if (activePaymentTab === 'cash' && (s.payment_method !== 'cash' || isSample) && s.payment_method !== undefined) return false;
+    if (activePaymentTab === 'upi' && (s.payment_method !== 'upi' || isSample)) return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -564,85 +572,116 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. NET BALANCE CARDS (CASH IN HAND, UPI BALANCE, NET PROFIT) */}
+      {/* 1. TOP 4 BALANCE CARDS (CASH, UPI, PROFIT, FREE SAMPLES) */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         
         {/* Card 1: NET CASH IN HAND (Cash Sales - Cash Expenses) */}
-        <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 space-y-1.5 relative overflow-hidden shadow-lg">
+        <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3 sm:p-3.5 space-y-1 relative overflow-hidden shadow-lg">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
               <Banknote className="w-3.5 h-3.5" />
-              <span>Net Cash In Hand</span>
+              <span>Cash In Hand</span>
             </span>
-            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">
-              💵 In Drawer
+            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-500/30">
+              💵 Drawer
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className={`text-2xl sm:text-3xl font-black ${
+            <span className={`text-xl sm:text-2xl font-black ${
               netCashInHand >= 0 ? 'text-emerald-300' : 'text-rose-400'
             }`}>
               ₹{netCashInHand.toLocaleString('en-IN')}
             </span>
           </div>
 
-          <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1.5 mt-1 font-medium">
-            <span className="text-emerald-400 font-semibold">+₹{totalCashSales} Sales</span>
-            <span className="text-rose-400 font-semibold">-₹{totalCashExpenseAmount} Expenses</span>
+          <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1 font-medium">
+            <span className="text-emerald-400">+₹{totalCashSales}</span>
+            <span className="text-rose-400">-₹{totalCashExpenseAmount}</span>
           </div>
         </div>
 
         {/* Card 2: NET UPI IN BANK (UPI Sales - UPI Expenses) */}
-        <div className="bg-slate-900/90 border border-purple-500/30 rounded-2xl p-3.5 sm:p-4 space-y-1.5 relative overflow-hidden shadow-lg">
+        <div className="bg-slate-900/90 border border-purple-500/30 rounded-2xl p-3 sm:p-3.5 space-y-1 relative overflow-hidden shadow-lg">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
               <QrCode className="w-3.5 h-3.5" />
-              <span>Net UPI In Bank</span>
+              <span>UPI In Bank</span>
             </span>
-            <span className="text-[9px] bg-purple-500/20 text-purple-300 font-bold px-1.5 py-0.5 rounded border border-purple-500/30">
-              📱 Online / QR
+            <span className="text-[9px] bg-purple-500/20 text-purple-300 font-bold px-1.5 py-0.2 rounded border border-purple-500/30">
+              📱 Online
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className={`text-2xl sm:text-3xl font-black ${
+            <span className={`text-xl sm:text-2xl font-black ${
               netUpiBankBalance >= 0 ? 'text-purple-300' : 'text-rose-400'
             }`}>
               ₹{netUpiBankBalance.toLocaleString('en-IN')}
             </span>
           </div>
 
-          <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1.5 mt-1 font-medium">
-            <span className="text-purple-400 font-semibold">+₹{totalUpiSales} Sales</span>
-            <span className="text-rose-400 font-semibold">-₹{totalUpiExpenseAmount} Expenses</span>
+          <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1 font-medium">
+            <span className="text-purple-400">+₹{totalUpiSales}</span>
+            <span className="text-rose-400">-₹{totalUpiExpenseAmount}</span>
           </div>
         </div>
 
         {/* Card 3: NET TOTAL SHOP PROFIT (Total Sales - Total Expenses) */}
-        <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-1.5 relative overflow-hidden shadow-lg">
+        <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-3 sm:p-3.5 space-y-1 relative overflow-hidden shadow-lg">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1">
               <Scale className="w-3.5 h-3.5" />
-              <span>Net Shop Profit</span>
+              <span>Net Profit</span>
             </span>
-            <span className="text-[9px] bg-white/10 text-slate-300 font-bold px-1.5 py-0.5 rounded">
-              {paidSales.length} Paid • {totalSamplesGiven} Samples
+            <span className="text-[9px] bg-white/10 text-slate-300 font-bold px-1.5 py-0.2 rounded">
+              {paidSales.length} Paid
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className={`text-2xl sm:text-3xl font-black ${
+            <span className={`text-xl sm:text-2xl font-black ${
               netShopProfit >= 0 ? 'text-white' : 'text-rose-400'
             }`}>
               ₹{netShopProfit.toLocaleString('en-IN')}
             </span>
           </div>
 
-          <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1.5 mt-1 font-medium">
-            <span className="text-slate-300 font-semibold">+₹{totalSalesRevenue} Total In</span>
-            <span className="text-rose-400 font-semibold">-₹{totalExpenseAmount} Total Out</span>
+          <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1 font-medium">
+            <span className="text-slate-300">+₹{totalSalesRevenue}</span>
+            <span className="text-rose-400">-₹{totalExpenseAmount}</span>
+          </div>
+        </div>
+
+        {/* Card 4: FREE SAMPLES DISPATCHED (₹0 Complimentary Orders) */}
+        <div 
+          onClick={() => {
+            setMainView('sales');
+            setActivePaymentTab('sample');
+          }}
+          className="bg-slate-900/90 border-2 border-amber-500/50 hover:border-amber-400 rounded-2xl p-3 sm:p-3.5 space-y-1 relative overflow-hidden shadow-lg cursor-pointer transition active:scale-95 bg-gradient-to-br from-amber-950/30 to-slate-900"
+        >
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+              <Gift className="w-3.5 h-3.5" />
+              <span>0 Rupees Bills</span>
+            </span>
+            <span className="text-[9px] bg-amber-500/20 text-amber-300 font-black px-1.5 py-0.2 rounded border border-amber-500/40 animate-pulse">
+              🎁 ₹0 Bill
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-black text-amber-300">
+              {totalSamplesGiven}
+            </span>
+            <span className="text-[10px] font-bold text-amber-400/90">Bills Created</span>
+          </div>
+
+          <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1 font-medium">
+            <span className="text-amber-300 font-semibold">{totalSampleItemsCount} Scoops (Stock -)</span>
+            <span className="text-amber-400 font-black underline">View All ➜</span>
           </div>
         </div>
 
@@ -792,39 +831,60 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MAIN NAVIGATION TABS: 'summary' | 'sales' | 'expenses' */}
+      {/* 3. MAIN NAVIGATION TABS: 'sales' (All & Sub-filtered) | 'samples' | 'expenses' | 'summary' */}
       {/* ========================================================================= */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Main View Tabs */}
-          <div className="flex bg-slate-900 p-1 rounded-xl border border-white/10 gap-1">
+          <div className="flex bg-slate-900 p-1 rounded-xl border border-white/10 gap-1 overflow-x-auto scrollbar-none">
             <button
-              onClick={() => setMainView('summary')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                mainView === 'summary'
+              onClick={() => {
+                setMainView('sales');
+                setActivePaymentTab('all');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                mainView === 'sales' && activePaymentTab === 'all'
                   ? 'bg-purple-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Scale className="w-3.5 h-3.5" />
-              <span>Net Summary</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>📑 All Bills ({dateFilteredSales.length})</span>
             </button>
 
             <button
-              onClick={() => setMainView('sales')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                mainView === 'sales'
-                  ? 'bg-purple-600 text-white shadow-md'
+              onClick={() => {
+                setMainView('samples');
+                setActivePaymentTab('sample');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap ${
+                mainView === 'samples' || (mainView === 'sales' && activePaymentTab === 'sample')
+                  ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300'
+                  : 'text-amber-400 hover:text-amber-300 bg-amber-950/40 border border-amber-500/30'
+              }`}
+            >
+              <Gift className="w-3.5 h-3.5" />
+              <span>🎁 0 Rupees Bills ({totalSamplesGiven})</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMainView('sales');
+                setActivePaymentTab('paid');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                mainView === 'sales' && activePaymentTab === 'paid'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Sales ({dateFilteredSales.length})</span>
+              <span>Paid Sales ({paidSales.length})</span>
             </button>
 
             <button
               onClick={() => setMainView('expenses')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                 mainView === 'expenses'
                   ? 'bg-rose-600 text-white shadow-md'
                   : 'text-rose-400 hover:text-rose-300'
@@ -833,46 +893,55 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
               <span>Expenses ({dateFilteredExpenses.length})</span>
             </button>
+
+            <button
+              onClick={() => setMainView('summary')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                mainView === 'summary'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>Summary</span>
+            </button>
           </div>
 
-          {/* Sub Payment Filter (All / Cash / UPI / Sample) */}
-          {mainView !== 'summary' && (
+          {/* Sub Payment Filter (All / ₹0 Samples / Cash / UPI / Paid) for Sales tab */}
+          {mainView === 'sales' && (
             <div className="flex bg-slate-900 p-1 rounded-xl border border-white/10 gap-1 overflow-x-auto scrollbar-none">
               <button
                 onClick={() => setActivePaymentTab('all')}
                 className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition whitespace-nowrap ${
-                  activePaymentTab === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400'
+                  activePaymentTab === 'all' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400'
                 }`}
               >
-                All ({mainView === 'sales' ? dateFilteredSales.length : dateFilteredExpenses.length})
+                All ({dateFilteredSales.length})
+              </button>
+              <button
+                onClick={() => setActivePaymentTab('sample')}
+                className={`px-2.5 py-1 text-[11px] font-black rounded-lg transition whitespace-nowrap ${
+                  activePaymentTab === 'sample' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-amber-400 bg-amber-950/30 border border-amber-500/20'
+                }`}
+              >
+                🎁 ₹0 Samples ({totalSamplesGiven})
               </button>
               <button
                 onClick={() => setActivePaymentTab('cash')}
                 className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition whitespace-nowrap ${
-                  activePaymentTab === 'cash' ? 'bg-emerald-600 text-white' : 'text-emerald-400'
+                  activePaymentTab === 'cash' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-400'
                 }`}
               >
-                Cash ({mainView === 'sales' ? cashSales.length : cashExpenses.length})
+                Cash ({cashSales.length})
               </button>
               <button
                 onClick={() => setActivePaymentTab('upi')}
                 className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition whitespace-nowrap ${
-                  activePaymentTab === 'upi' ? 'bg-purple-600 text-white' : 'text-purple-400'
+                  activePaymentTab === 'upi' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-400'
                 }`}
               >
-                UPI ({mainView === 'sales' ? upiSales.length : upiExpenses.length})
+                UPI ({upiSales.length})
               </button>
-              {mainView === 'sales' && (
-                <button
-                  onClick={() => setActivePaymentTab('sample')}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition whitespace-nowrap flex items-center gap-1 ${
-                    activePaymentTab === 'sample' ? 'bg-amber-600 text-white shadow-md' : 'text-amber-400 hover:text-amber-300'
-                  }`}
-                >
-                  <Gift className="w-3 h-3" />
-                  <span>Free Samples ({totalSamplesGiven})</span>
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -887,6 +956,8 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
             placeholder={
               mainView === 'expenses'
                 ? 'Search expenses by description, category...'
+                : mainView === 'samples'
+                ? 'Search sample bills by client name, phone, slip #...'
                 : 'Search sales by invoice #, customer name, phone...'
             }
             className="w-full pl-10 pr-10 py-2.5 bg-slate-900 text-white placeholder-slate-500 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs transition"
@@ -935,14 +1006,20 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
 
               {/* Free Samples Dispatched Summary */}
               {totalSamplesGiven > 0 && (
-                <div className="flex justify-between items-center p-2.5 bg-slate-950 rounded-xl border border-amber-500/30">
-                  <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                <div 
+                  onClick={() => setMainView('samples')}
+                  className="flex justify-between items-center p-2.5 bg-amber-950/20 rounded-xl border border-amber-500/40 cursor-pointer hover:border-amber-400 transition"
+                >
+                  <span className="font-bold text-amber-200 flex items-center gap-1.5">
                     <Gift className="w-4 h-4 text-amber-400" />
-                    <span>Free Tasting Samples Given</span>
+                    <span>Free Tasting Samples Dispatched</span>
                   </span>
-                  <span className="font-black text-amber-300 text-sm">
-                    {totalSamplesGiven} Samples (₹0 Free)
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-amber-300 text-sm">
+                      {totalSamplesGiven} Bills (₹0 Free)
+                    </span>
+                    <span className="text-[10px] text-amber-400 underline">View ➜</span>
+                  </div>
                 </div>
               )}
 
@@ -1072,9 +1149,106 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
             </div>
           </div>
         </div>
+      ) : mainView === 'samples' ? (
+        /* ========================================================================= */
+        /* VIEW 2: DEDICATED FREE SAMPLE ORDERS VIEW (₹0 FREE BILLS) */
+        /* ========================================================================= */
+        <div className="space-y-3">
+          {/* Sample Banner */}
+          <div className="p-3 bg-amber-950/40 border border-amber-500/40 rounded-2xl flex items-center justify-between text-amber-200">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
+              <div>
+                <span className="text-xs font-black block text-amber-300">Free Business Tasting Samples (₹0 Bills)</span>
+                <span className="text-[10px] text-amber-200/80">All complimentary tasting slips with client details & stock deductions</span>
+              </div>
+            </div>
+            <span className="text-xs font-black bg-amber-500 text-slate-950 px-2.5 py-1 rounded-xl shrink-0 shadow">
+              {sampleSales.length} Bills
+            </span>
+          </div>
+
+          {/* Sample Bills List */}
+          {sampleSales.length > 0 ? (
+            sampleSales.map((sale) => {
+              const items = saleItems.filter((i) => i.sale_id === sale.id);
+              return (
+                <div
+                  key={sale.id}
+                  onClick={() => handleOpenReceipt(sale)}
+                  className="bg-slate-900/95 border-2 border-amber-500/40 hover:border-amber-400 rounded-2xl p-3.5 transition cursor-pointer active:scale-[0.99] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-lg shadow-amber-950/20 bg-gradient-to-br from-amber-950/20 to-slate-900"
+                >
+                  {/* Left Info */}
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-black text-amber-400">
+                        #{sale.id.substring(5, 11).toUpperCase()}
+                      </span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 flex items-center gap-1 shadow">
+                        <Gift className="w-3 h-3" />
+                        <span>FREE SAMPLE (₹0)</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        {formatDate(sale.created_at)} at {formatTime(sale.created_at)}
+                      </span>
+                    </div>
+
+                    {sale.customer_name ? (
+                      <p className="text-xs text-white font-bold">
+                        Client / Recipient: <span className="text-amber-300 font-black">{sale.customer_name}</span>
+                        {sale.customer_phone && <span className="text-slate-400 text-[10px] ml-1">({sale.customer_phone})</span>}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic">Free Walk-in Tasting Sample</p>
+                    )}
+
+                    {/* Sample Items Dispatched */}
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {items.map((item) => (
+                        <span
+                          key={item.id}
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-950/60 text-amber-200 border border-amber-500/30 flex items-center gap-1"
+                        >
+                          <span>🍨 {item.product_name}</span>
+                          <span className="bg-amber-500/30 px-1 py-0.2 rounded text-white">×{item.quantity}</span>
+                          <span className="text-amber-400 font-bold">(Free)</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Action */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                    <div className="text-left sm:text-right">
+                      <span className="text-[10px] text-amber-400/80 font-bold block uppercase">Bill Total</span>
+                      <span className="text-lg font-black text-amber-400">₹0 (FREE)</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenReceipt(sale);
+                      }}
+                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1 shadow-md shadow-amber-950"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>View Slip</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-2">
+              <Gift className="w-8 h-8 mx-auto text-amber-500/50" />
+              <p className="text-xs font-medium">No free sample bills dispatched yet for this date range.</p>
+              <p className="text-[11px] text-slate-500">Create a sample bill from Billing (POS) using the "Sample 🎁 (₹0)" payment option!</p>
+            </div>
+          )}
+        </div>
       ) : mainView === 'expenses' ? (
         /* ========================================================================= */
-        /* VIEW 2: EXPENSES MANAGEMENT LIST (WITH DESCRIPTION & CATEGORY) */
+        /* VIEW 3: EXPENSES MANAGEMENT LIST (WITH DESCRIPTION & CATEGORY) */
         /* ========================================================================= */
         <div className="space-y-2.5">
           {displayExpenses.length > 0 ? (
@@ -1148,7 +1322,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
         </div>
       ) : (
         /* ========================================================================= */
-        /* VIEW 3: SALES LISTING */
+        /* VIEW 3: SALES & SAMPLES LISTING */
         /* ========================================================================= */
         <div className="space-y-2.5">
           {displaySales.length > 0 ? (
@@ -1162,26 +1336,26 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                 <div
                   key={sale.id}
                   onClick={() => handleOpenReceipt(sale)}
-                  className={`bg-slate-900/90 border rounded-2xl p-3.5 transition cursor-pointer active:scale-[0.99] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+                  className={`border rounded-2xl p-3.5 transition cursor-pointer active:scale-[0.99] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-md ${
                     isSample
-                      ? 'border-amber-500/35 hover:border-amber-500/60 bg-amber-950/15'
+                      ? 'bg-gradient-to-br from-amber-950/40 via-slate-900 to-amber-950/20 border-2 border-amber-500/60 hover:border-amber-400 shadow-amber-950/30'
                       : isUpi
-                      ? 'border-purple-500/25 hover:border-purple-500/50'
+                      ? 'bg-slate-900/90 border-purple-500/25 hover:border-purple-500/50'
                       : isCard
-                      ? 'border-blue-500/25 hover:border-blue-500/50'
-                      : 'border-emerald-500/25 hover:border-emerald-500/50'
+                      ? 'bg-slate-900/90 border-blue-500/25 hover:border-blue-500/50'
+                      : 'bg-slate-900/90 border-emerald-500/25 hover:border-emerald-500/50'
                   }`}
                 >
                   {/* Left: Bill Info */}
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-mono text-xs font-black ${isSample ? 'text-amber-400' : 'text-purple-400'}`}>
+                      <span className={`font-mono text-xs font-black ${isSample ? 'text-amber-300' : 'text-purple-400'}`}>
                         #{sale.id.substring(5, 11).toUpperCase()}
                       </span>
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 ${
                           isSample
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
                             : isUpi
                             ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
                             : isCard
@@ -1189,7 +1363,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                             : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                         }`}
                       >
-                        {isSample ? '🎁 FREE SAMPLE (₹0)' : isUpi ? <QrCode className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                        {isSample ? '🎁 0 RUPEES BILL (₹0 સેમ્પલ બિલ)' : isUpi ? <QrCode className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
                         {!isSample && <span>{isUpi ? 'UPI / ONLINE' : isCard ? 'CARD' : 'CASH 💵'}</span>}
                       </span>
                       <span className="text-[10px] text-slate-400 font-semibold">
@@ -1197,25 +1371,31 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                       </span>
                     </div>
 
-                    {sale.customer_name && (
+                    {sale.customer_name ? (
                       <p className="text-xs text-white font-bold">
-                        {isSample ? 'Recipient / Client: ' : 'Customer: '}
-                        <span className={isSample ? 'text-amber-300' : 'text-purple-300'}>{sale.customer_name}</span>
+                        {isSample ? '👤 Client / Recipient: ' : '👤 Customer: '}
+                        <span className={isSample ? 'text-amber-300 font-black' : 'text-purple-300'}>{sale.customer_name}</span>
                         {sale.customer_phone && <span className="text-slate-400 text-[10px] ml-1">({sale.customer_phone})</span>}
                       </p>
-                    )}
+                    ) : isSample ? (
+                      <p className="text-[11px] text-amber-200/80 italic font-semibold">👤 Walk-in Free Tasting Sample</p>
+                    ) : null}
 
+                    {/* Dispatched Items */}
                     <div className="flex flex-wrap gap-1.5 pt-0.5">
                       {items.map((item) => (
                         <span
                           key={item.id}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-1 ${
                             isSample
-                              ? 'bg-amber-950/40 text-amber-200 border-amber-500/20'
+                              ? 'bg-amber-950/80 text-amber-200 border-amber-500/40'
                               : 'bg-slate-950 text-slate-300 border-white/5'
                           }`}
                         >
-                          🍨 {item.product_name} × <strong className="text-white">{item.quantity}</strong> ({isSample ? '₹0 Free' : `₹${item.price}`})
+                          <span>🍨 {item.product_name}</span>
+                          <span className={isSample ? 'bg-amber-500 text-slate-950 px-1 py-0.2 rounded font-black' : 'text-white'}>×{item.quantity}</span>
+                          <span className={isSample ? 'text-amber-300 font-bold' : 'text-slate-400'}>({isSample ? '₹0 Free' : `₹${item.price}`})</span>
+                          {isSample && <span className="text-[9px] text-amber-400 font-bold ml-0.5">📉 Stock -{item.quantity}</span>}
                         </span>
                       ))}
                     </div>
@@ -1224,11 +1404,11 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                   {/* Right: Bill Amount & Actions */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
                     <div className="text-left sm:text-right">
-                      <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                        {isSample ? 'Sample Total' : isUpi ? 'UPI Amount' : 'Cash Amount'}
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">
+                        {isSample ? '🎁 Sample Total' : isUpi ? 'UPI Amount' : 'Cash Amount'}
                       </span>
                       <span className={`text-lg font-black ${isSample ? 'text-amber-400' : 'text-white'}`}>
-                        {isSample ? '₹0 (Free)' : `₹${sale.total_price.toLocaleString('en-IN')}`}
+                        {isSample ? '₹0 (FREE)' : `₹${sale.total_price.toLocaleString('en-IN')}`}
                       </span>
                     </div>
 
@@ -1237,10 +1417,14 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                         e.stopPropagation();
                         handleOpenReceipt(sale);
                       }}
-                      className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600 border border-purple-500/30 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                      className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md ${
+                        isSample
+                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950'
+                          : 'bg-purple-600/20 hover:bg-purple-600 border border-purple-500/30 text-purple-300 hover:text-white'
+                      }`}
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>View Bill</span>
+                      <span>{isSample ? 'View Slip' : 'View Bill'}</span>
                     </button>
                   </div>
                 </div>
@@ -1249,7 +1433,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
           ) : (
             <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-2">
               <FileText className="w-8 h-8 mx-auto text-slate-600" />
-              <p className="text-xs font-medium">No sales found for this date range.</p>
+              <p className="text-xs font-medium">No sales or sample bills found for this date range.</p>
             </div>
           )}
         </div>
