@@ -18,7 +18,10 @@ import {
   X,
   Phone,
   User,
-  AlertTriangle,
+  Edit3,
+  RotateCcw,
+  Tag,
+  Sliders,
 } from 'lucide-react';
 
 interface POSProps {
@@ -39,6 +42,15 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(false);
+
+  // Quick Price Edit Modal State
+  const [editingPriceItem, setEditingPriceItem] = useState<{
+    product: Product;
+    currentPrice: number;
+    defaultPrice: number;
+    quantity: number;
+    tempPrice: string | number;
+  } | null>(null);
 
   // Checkout Drawer / Modal state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -147,6 +159,46 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
     );
   };
 
+  // Open Price Edit Modal for a specific product
+  const handleOpenPriceModal = (product: Product) => {
+    const cartItem = cart.find((i) => i.product.id === product.id);
+    const currentPrice = cartItem?.custom_price !== undefined ? cartItem.custom_price : product.price;
+    const quantity = cartItem ? cartItem.quantity : 1;
+
+    // If not in cart yet, add 1 item to cart first
+    if (!cartItem) {
+      if (product.current_stock <= 0) {
+        triggerToast(`⚠️ "${product.name}" is OUT OF STOCK!`, 'error');
+        return;
+      }
+      setCart((prev) => [...prev, { product, quantity: 1 }]);
+    }
+
+    setEditingPriceItem({
+      product,
+      currentPrice,
+      defaultPrice: product.price,
+      quantity,
+      tempPrice: currentPrice,
+    });
+  };
+
+  const handleSavePriceModal = () => {
+    if (!editingPriceItem) return;
+    const targetPrice = editingPriceItem.tempPrice === '' ? undefined : Math.max(0, Number(editingPriceItem.tempPrice));
+    handleUpdateItemPrice(editingPriceItem.product.id, targetPrice !== undefined ? targetPrice : '');
+    
+    if (targetPrice !== undefined && targetPrice !== editingPriceItem.defaultPrice) {
+      triggerToast(
+        `Custom rate ₹${targetPrice} applied for "${editingPriceItem.product.name}" (Original: ₹${editingPriceItem.defaultPrice})`,
+        'success'
+      );
+    } else {
+      triggerToast(`Restored original MRP ₹${editingPriceItem.defaultPrice} for "${editingPriceItem.product.name}"`, 'info');
+    }
+    setEditingPriceItem(null);
+  };
+
   const handleClearCart = () => {
     setCart([]);
     setIsCheckoutOpen(false);
@@ -157,7 +209,6 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
     const price = item.custom_price !== undefined ? Number(item.custom_price) : item.product.price;
     return acc + price * item.quantity;
   }, 0);
-  const finalTotal = Math.max(0, cartSubtotal - (discountAmount || 0));
 
   // Checkout Complete (With Stock Minus & Error Prevention)
   const handleCompleteSale = async () => {
@@ -269,7 +320,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
             <h1 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
               <span>🍦 Quick Billing</span>
             </h1>
-            <p className="text-[11px] text-slate-400">Tap items to add to bill. Stock auto-deducts.</p>
+            <p className="text-[11px] text-slate-400">Tap items to add to bill. Modify rate anytime.</p>
           </div>
           {cart.length > 0 && (
             <button
@@ -336,6 +387,8 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
               const isLow = status === 'Low Stock'; // <= 10 units
               const cartItem = cart.find((i) => i.product.id === p.id);
               const inCartQty = cartItem ? cartItem.quantity : 0;
+              const hasCustomPrice = cartItem?.custom_price !== undefined && cartItem.custom_price !== p.price;
+              const currentEffectivePrice = cartItem?.custom_price !== undefined ? cartItem.custom_price : p.price;
 
               return (
                 <div
@@ -374,19 +427,36 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
                     >
                       {isOut ? '🔴 0 (OUT)' : isLow ? `⚠️ ${p.current_stock}` : `🟢 ${p.current_stock}`}
                     </span>
+
+                    {/* Custom Price Tag indicator if price modified */}
+                    {hasCustomPrice && (
+                      <span className="absolute bottom-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 shadow flex items-center gap-0.5 animate-pulse">
+                        <Tag className="w-2.5 h-2.5" />
+                        <span>Custom ₹{currentEffectivePrice}</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Product Details */}
                   <div className="mb-2">
                     <h3 className="text-xs font-bold text-white line-clamp-1">{p.name}</h3>
                     <div className="flex justify-between items-center mt-0.5">
-                      <span className="text-sm font-black text-purple-300">₹{p.price}</span>
+                      <div className="flex items-baseline gap-1">
+                        {hasCustomPrice ? (
+                          <>
+                            <span className="text-sm font-black text-amber-300">₹{currentEffectivePrice}</span>
+                            <span className="text-[10px] text-slate-500 line-through">₹{p.price}</span>
+                          </>
+                        ) : (
+                          <span className="text-sm font-black text-purple-300">₹{p.price}</span>
+                        )}
+                      </div>
                       <span className="text-[9px] text-slate-400 uppercase font-semibold">{p.category}</span>
                     </div>
                   </div>
 
-                  {/* Add to Cart / Qty Control Button */}
-                  <div>
+                  {/* Add to Cart / Qty & Price Control Button */}
+                  <div className="space-y-1.5">
                     {isOut ? (
                       <button
                         disabled
@@ -395,24 +465,39 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
                         Out of Stock
                       </button>
                     ) : inCartQty > 0 ? (
-                      <div className="flex items-center justify-between bg-purple-600/30 border border-purple-500/40 rounded-xl p-1">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between bg-purple-600/30 border border-purple-500/40 rounded-xl p-1">
+                          <button
+                            onClick={() => handleUpdateQuantity(p.id, -1)}
+                            className="w-7 h-7 flex items-center justify-center bg-purple-600 active:scale-90 text-white rounded-lg transition"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-xs font-black text-white">{inCartQty} in bill</span>
+                          <button
+                            onClick={() => handleUpdateQuantity(p.id, 1)}
+                            disabled={inCartQty >= p.current_stock}
+                            className={`w-7 h-7 flex items-center justify-center rounded-lg transition active:scale-90 ${
+                              inCartQty >= p.current_stock
+                                ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                : 'bg-purple-600 text-white'
+                            }`}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Quick Price Edit Button right on card */}
                         <button
-                          onClick={() => handleUpdateQuantity(p.id, -1)}
-                          className="w-7 h-7 flex items-center justify-center bg-purple-600 active:scale-90 text-white rounded-lg transition"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-xs font-black text-white">{inCartQty} in bill</span>
-                        <button
-                          onClick={() => handleUpdateQuantity(p.id, 1)}
-                          disabled={inCartQty >= p.current_stock}
-                          className={`w-7 h-7 flex items-center justify-center rounded-lg transition active:scale-90 ${
-                            inCartQty >= p.current_stock
-                              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                              : 'bg-purple-600 text-white'
+                          onClick={() => handleOpenPriceModal(p)}
+                          className={`w-full py-1 px-2 rounded-lg text-[10px] font-black transition flex items-center justify-center gap-1 border active:scale-95 ${
+                            hasCustomPrice
+                              ? 'bg-amber-950/50 text-amber-300 border-amber-500/40 hover:bg-amber-900/60'
+                              : 'bg-slate-950/80 text-slate-300 border-white/10 hover:bg-slate-800'
                           }`}
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Edit3 className="w-2.5 h-2.5" />
+                          <span>{hasCustomPrice ? `Rate: ₹${currentEffectivePrice} (બદલો)` : `Edit Rate (ભાવ બદલો)`}</span>
                         </button>
                       </div>
                     ) : (
@@ -434,7 +519,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
             <span className="text-4xl block">🍨</span>
             <h3 className="text-sm font-bold text-white">No Products In Stock Yet</h3>
             <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              All previous data has been deleted. Please add your new flavors and stock items from the Stock tab!
+              All previous stock is 0. Please add stock from the Stock tab to start billing!
             </p>
             {onNavigate && (
               <button
@@ -487,9 +572,9 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsCheckoutOpen(false)} />
 
-          <div className="relative max-w-lg mx-auto w-full bg-slate-900 border-t border-white/10 rounded-t-3xl p-4 max-h-[85vh] flex flex-col justify-between overflow-y-auto animate-slide-up z-10 space-y-3.5 shadow-2xl">
+          <div className="relative max-w-lg mx-auto w-full bg-slate-900 border-t border-white/10 rounded-t-3xl p-4 max-h-[88vh] flex flex-col justify-between overflow-y-auto animate-slide-up z-10 space-y-3 shadow-2xl">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-purple-400" />
                 <h3 className="text-sm font-black text-white uppercase tracking-wider">Bill & Checkout</h3>
@@ -507,8 +592,16 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
               </div>
             </div>
 
+            {/* Authority notice banner */}
+            <div className="px-3 py-2 bg-purple-950/40 border border-purple-500/30 rounded-xl flex items-center justify-between text-purple-200 text-[11px]">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span><strong>કિંમત બદલવાની સત્તા:</strong> ભાવ બદલવા માટે Rate બોક્સમાં કિંમત લખો.</span>
+              </span>
+            </div>
+
             {/* Cart Items Summary (With Price Modification Authority) */}
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
               {cart.map((item) => {
                 const prod = products.find((p) => p.id === item.product.id);
                 const isMax = prod ? item.quantity >= prod.current_stock : false;
@@ -516,14 +609,26 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
                 const isPriceModified = item.custom_price !== undefined && item.custom_price !== item.product.price;
 
                 return (
-                  <div key={item.product.id} className="bg-slate-950 p-2.5 rounded-2xl border border-white/10 space-y-2">
+                  <div
+                    key={item.product.id}
+                    className={`bg-slate-950 p-2.5 rounded-2xl border transition ${
+                      isPriceModified ? 'border-amber-500/40 ring-1 ring-amber-500/20' : 'border-white/10'
+                    } space-y-2`}
+                  >
                     {/* Top Row: Product Name & Quantity */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-white truncate">{item.product.name}</p>
-                        <p className="text-[10px] text-slate-400">
-                          Default MRP: ₹{item.product.price}/unit
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-slate-400">
+                            Default MRP: ₹{item.product.price}
+                          </span>
+                          {isPriceModified && (
+                            <span className="text-[9px] font-black text-amber-400 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-500/30">
+                              ⭐ Custom Price Active
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Quantity Stepper */}
@@ -555,9 +660,9 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
 
                     {/* Bottom Row: Inline Price Editing Authority */}
                     <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/5 bg-slate-900/60 -mx-1 px-2.5 py-1.5 rounded-xl">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1">
-                          <span>Rate:</span>
+                          <span>Rate / ભાવ:</span>
                         </span>
                         <div className="relative flex items-center">
                           <span className="absolute left-2 text-xs font-black text-slate-400">₹</span>
@@ -574,11 +679,23 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
                             placeholder="Price"
                           />
                         </div>
+
+                        {/* Quick Presets Modal Trigger */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPriceModal(item.product)}
+                          className="px-1.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold flex items-center gap-0.5 border border-white/5"
+                          title="Quick Price Presets"
+                        >
+                          <Sliders className="w-2.5 h-2.5" />
+                          <span>Presets</span>
+                        </button>
+
                         {isPriceModified && (
                           <button
                             type="button"
                             onClick={() => handleUpdateItemPrice(item.product.id, '')}
-                            className="text-[9px] text-amber-400 hover:text-amber-300 font-bold underline whitespace-nowrap"
+                            className="text-[9px] text-amber-400 hover:text-amber-300 font-bold underline whitespace-nowrap ml-0.5"
                             title="Reset to original default price"
                           >
                             Reset ₹{item.product.price}
@@ -749,6 +866,148 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* QUICK PRICE EDIT MODAL / BOTTOM SHEET */}
+      {/* ========================================================================= */}
+      {editingPriceItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setEditingPriceItem(null)} />
+
+          <div className="relative max-w-sm w-full bg-slate-900 border border-white/15 rounded-3xl p-4 sm:p-5 z-10 space-y-4 shadow-2xl animate-scale-pop">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">Change Item Rate</h3>
+                  <p className="text-[11px] text-slate-400">કિંમત બદલવાની સત્તા (Price Authority)</p>
+                </div>
+              </div>
+              <button onClick={() => setEditingPriceItem(null)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Product Summary */}
+            <div className="bg-slate-950 p-3 rounded-2xl border border-white/5 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-white block">{editingPriceItem.product.name}</span>
+                <span className="text-[10px] text-slate-400">Category: {editingPriceItem.product.category}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block">Default MRP</span>
+                <span className="text-sm font-black text-slate-300">₹{editingPriceItem.defaultPrice}</span>
+              </div>
+            </div>
+
+            {/* Big Numeric Price Input */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-slate-300 font-bold block">
+                Billing Rate / નવો ભાવ (₹)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-base font-black text-amber-400">₹</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  autoFocus
+                  value={editingPriceItem.tempPrice}
+                  onChange={(e) =>
+                    setEditingPriceItem((prev) =>
+                      prev ? { ...prev, tempPrice: e.target.value } : null
+                    )
+                  }
+                  className="w-full pl-9 pr-10 py-3 bg-slate-950 border-2 border-amber-500/60 rounded-2xl text-lg font-black text-white outline-none focus:border-amber-400 ring-2 ring-amber-500/20"
+                  placeholder="e.g. 550"
+                />
+                {editingPriceItem.tempPrice !== '' && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingPriceItem((prev) => (prev ? { ...prev, tempPrice: '' } : null))
+                    }
+                    className="absolute right-3 text-slate-400 hover:text-white p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Price Shortcuts */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Quick Preset Shortcuts:
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  editingPriceItem.defaultPrice - 100,
+                  editingPriceItem.defaultPrice - 50,
+                  500,
+                  550,
+                  editingPriceItem.defaultPrice,
+                  editingPriceItem.defaultPrice + 50,
+                ]
+                  .filter((price, idx, arr) => price > 0 && arr.indexOf(price) === idx)
+                  .map((presetPrice) => (
+                    <button
+                      key={presetPrice}
+                      type="button"
+                      onClick={() =>
+                        setEditingPriceItem((prev) =>
+                          prev ? { ...prev, tempPrice: presetPrice } : null
+                        )
+                      }
+                      className={`py-1.5 px-2 rounded-xl text-xs font-black transition active:scale-95 border ${
+                        Number(editingPriceItem.tempPrice) === presetPrice
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-1 ring-amber-300'
+                          : 'bg-slate-950 text-slate-300 border-white/10 hover:bg-slate-800'
+                      }`}
+                    >
+                      ₹{presetPrice}
+                    </button>
+                  ))}
+              </div>
+            </div>
+
+            {/* Live Calculation Preview */}
+            <div className="p-2.5 bg-slate-950/80 rounded-xl border border-white/5 flex items-center justify-between text-xs">
+              <span className="text-slate-400">Total in Cart ({editingPriceItem.quantity} unit):</span>
+              <span className="font-black text-amber-300">
+                ₹{((Number(editingPriceItem.tempPrice) || 0) * editingPriceItem.quantity).toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setEditingPriceItem((prev) =>
+                    prev ? { ...prev, tempPrice: prev.defaultPrice } : null
+                  )
+                }
+                className="py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 border border-white/10"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset (₹{editingPriceItem.defaultPrice})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSavePriceModal}
+                className="py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-slate-950 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-950"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Apply Price (₹{editingPriceItem.tempPrice || 0})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bill Receipt Modal */}
       <ReceiptModal
         isOpen={showReceipt}
@@ -759,3 +1018,4 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
     </div>
   );
 };
+
