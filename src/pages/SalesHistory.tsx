@@ -94,8 +94,8 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   // Sub-filter for payment mode: 'all' | 'sample' | 'cash' | 'upi' | 'paid'
   const [activePaymentTab, setActivePaymentTab] = useState<'all' | 'sample' | 'cash' | 'upi' | 'paid'>('all');
 
-  // Time / Date range filter
-  const [dateFilterPreset, setDateFilterPreset] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
+  // Time / Date range filter (Default to 'all' so no bills are hidden)
+  const [dateFilterPreset, setDateFilterPreset] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
