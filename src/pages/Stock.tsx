@@ -25,9 +25,9 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const p = localStorage.getItem('icecream_db_products');
-      return p ? JSON.parse(p) : initialProducts;
+      return p ? JSON.parse(p) : [];
     } catch {
-      return initialProducts;
+      return [];
     }
   });
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,7 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
   const loadData = async () => {
     try {
       const prods = await db.getProducts();
-      if (prods && prods.length > 0) {
+      if (prods) {
         setProducts(prods);
       }
       const txs = await db.getTransactions();
@@ -583,10 +583,36 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
             );
           })}
         </div>
+      ) : products.length === 0 ? (
+        <div className="py-16 text-center bg-slate-900/80 rounded-2xl border border-white/10 text-slate-400 space-y-3 px-4 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-purple-600/20 text-purple-400 flex items-center justify-center mx-auto border border-purple-500/30">
+            <Package className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-black text-white">No Products In Stock Yet</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+            All previous data has been deleted for a fresh start! Tap below to add your real flavors, pack sizes, prices, and initial stock quantities.
+          </p>
+          <button
+            onClick={() => {
+              setEditingProduct(null);
+              setFormName('');
+              setFormCategory('Ice Cream');
+              setFormPrice(200);
+              setFormStock(50);
+              setFormMinStock(10);
+              setFormImage('');
+              setIsModalOpen(true);
+            }}
+            className="px-5 py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-950 inline-flex items-center gap-2 active:scale-95 transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Your First Ice Cream / Pack</span>
+          </button>
+        </div>
       ) : (
         <div className="py-16 text-center bg-slate-900 rounded-2xl border border-white/5 text-slate-400 space-y-2">
           <Package className="w-8 h-8 mx-auto text-slate-600" />
-          <p className="text-xs">No products found matching criteria.</p>
+          <p className="text-xs">No products found matching "{searchQuery}"</p>
         </div>
       )}
 

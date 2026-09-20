@@ -16,6 +16,7 @@ import {
   Download,
   Upload,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -119,6 +120,23 @@ export const Settings: React.FC<SettingsProps> = ({ triggerToast, onDbReset }) =
       }
     };
     reader.readAsText(file);
+  };
+
+  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
+
+  const handleWipeAllData = async () => {
+    setIsWiping(true);
+    try {
+      await db.wipeAllData(true);
+      triggerToast('All data deleted! Database is 100% clean and ready for fresh items 🧹✨', 'success');
+      setShowWipeConfirm(false);
+      if (onDbReset) onDbReset();
+    } catch {
+      triggerToast('Failed to clear database', 'error');
+    } finally {
+      setIsWiping(false);
+    }
   };
 
   const handleResetDatabase = () => {
@@ -304,35 +322,96 @@ export const Settings: React.FC<SettingsProps> = ({ triggerToast, onDbReset }) =
         </form>
       </div>
 
-      {/* 4. Reset to Demo Data */}
-      <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 space-y-3">
+      {/* 4. Delete All Data (Fresh Start) */}
+      <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
         <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-rose-400" />
-          <h3 className="text-sm font-bold text-white">Reset to Default Sample Flavors</h3>
+          <Trash2 className="w-5 h-5 text-rose-500" />
+          <div>
+            <h3 className="text-sm font-black text-white">Delete All Stock & Hisab (નવી શરૂઆત)</h3>
+            <p className="text-[11px] text-slate-400">Clear all previous test products, stock, sales bills & kharcha to add your fresh new items</p>
+          </div>
         </div>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Restore the initial 5 sample flavors (Mava Malai, Chocolate Crunchy, Vanilla, Strawberry, Orange) and clear test sales.
+        <p className="text-xs text-rose-300/80 bg-rose-950/30 p-2.5 rounded-xl border border-rose-500/20 leading-relaxed">
+          ⚠️ <strong>Clean Slate:</strong> This will delete all products from stock, all sales invoices, stock audit history, and expense records.
         </p>
         <button
-          onClick={() => setShowResetConfirm(true)}
-          className="w-full py-2.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5"
+          onClick={() => setShowWipeConfirm(true)}
+          className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-rose-950"
         >
-          <RefreshCw className="w-4 h-4" />
-          <span>Reset Sample Ice Creams</span>
+          <Trash2 className="w-4 h-4" />
+          <span>Wipe All Data & Start Fresh 🧹</span>
         </button>
       </div>
 
-      {/* RESET CONFIRMATION MODAL */}
+      {/* 5. Reset to Demo Sample Flavors */}
+      <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-4 h-4 text-purple-400" />
+          <h3 className="text-sm font-bold text-white">Reset to Default Sample Flavors</h3>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Restore the initial 5 sample demo flavors (Mava Malai, Chocolate Crunchy, Vanilla, Strawberry, Orange).
+        </p>
+        <button
+          onClick={() => setShowResetConfirm(true)}
+          className="w-full py-2.5 bg-slate-950 hover:bg-slate-800 border border-white/10 text-slate-300 rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>Load Default Sample Ice Creams</span>
+        </button>
+      </div>
+
+      {/* WIPE ALL DATA CONFIRMATION MODAL */}
+      {showWipeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isWiping && setShowWipeConfirm(false)} />
+          <div className="relative max-w-sm w-full bg-slate-900 border border-rose-500/40 rounded-2xl p-5 space-y-4 z-10 animate-scale-pop shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertTriangle className="w-8 h-8 animate-pulse text-rose-500 shrink-0" />
+              <div>
+                <h3 className="text-base font-black text-white">Delete All Data?</h3>
+                <p className="text-[11px] text-rose-400 font-bold">This action cannot be undone!</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-white/5">
+              All stock flavors, bills, expenses, and transaction logs will be completely wiped from the database so you can start clean.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                disabled={isWiping}
+                onClick={() => setShowWipeConfirm(false)}
+                className="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isWiping}
+                onClick={handleWipeAllData}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-lg shadow-rose-950"
+              >
+                {isWiping ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>{isWiping ? 'Deleting...' : 'Yes, Delete All'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET SAMPLE FLAVORS CONFIRMATION MODAL */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowResetConfirm(false)} />
           <div className="relative max-w-sm w-full bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4 z-10 animate-scale-pop">
-            <div className="flex items-center gap-3 text-rose-400">
-              <AlertTriangle className="w-7 h-7 animate-pulse" />
-              <h3 className="text-sm font-black text-white">Reset Database?</h3>
+            <div className="flex items-center gap-3 text-purple-400">
+              <RefreshCw className="w-7 h-7" />
+              <h3 className="text-sm font-black text-white">Restore Sample Flavors?</h3>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              This will restore sample flavors and clear all local test transactions.
+              This will load default sample ice cream flavors and clear all local test transactions.
             </p>
             <div className="flex gap-2 pt-2">
               <button
@@ -343,9 +422,9 @@ export const Settings: React.FC<SettingsProps> = ({ triggerToast, onDbReset }) =
               </button>
               <button
                 onClick={handleResetDatabase}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black"
+                className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-black"
               >
-                Yes, Reset
+                Yes, Restore
               </button>
             </div>
           </div>

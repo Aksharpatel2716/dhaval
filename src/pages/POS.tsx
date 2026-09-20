@@ -26,13 +26,13 @@ interface POSProps {
   onNavigate?: (page: string) => void;
 }
 
-export const POS: React.FC<POSProps> = ({ triggerToast }) => {
+export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const p = localStorage.getItem('icecream_db_products');
-      return p ? JSON.parse(p) : initialProducts;
+      return p ? JSON.parse(p) : [];
     } catch {
-      return initialProducts;
+      return [];
     }
   });
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -56,11 +56,11 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
   const loadProducts = async () => {
     try {
       const data = await db.getProducts();
-      if (data && data.length > 0) {
+      if (data) {
         setProducts(data);
       }
-    } catch (e) {
-      console.warn('POS loadProducts error');
+    } catch {
+      console.warn('POS loadProducts fallback to local');
     } finally {
       setLoading(false);
     }
@@ -409,6 +409,23 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
                 </div>
               );
             })}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-3 px-4">
+            <span className="text-4xl block">🍨</span>
+            <h3 className="text-sm font-bold text-white">No Products In Stock Yet</h3>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+              All previous data has been deleted. Please add your new flavors and stock items from the Stock tab!
+            </p>
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('stock')}
+                className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-950 inline-flex items-center gap-1.5 active:scale-95 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Go to Stock & Add Items</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-2">

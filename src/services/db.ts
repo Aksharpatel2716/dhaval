@@ -236,7 +236,8 @@ export const initialProducts: Product[] = [
 
 // Helper to initialize Local Storage Tables
 export const seedLocalDatabase = (force = false) => {
-  if (force || !localStorage.getItem(LOCAL_PRODUCTS)) {
+  const isInit = localStorage.getItem('icecream_db_initialized');
+  if (force) {
     localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(initialProducts));
     localStorage.setItem(LOCAL_SALES, JSON.stringify([]));
     localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
@@ -254,19 +255,15 @@ export const seedLocalDatabase = (force = false) => {
       created_at: p.created_at,
     }));
     localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(initialTransactions));
-  } else {
-    // If local products already exist, ensure any missing initial products (e.g. 1 Kg packs) get added
-    try {
-      const stored = JSON.parse(localStorage.getItem(LOCAL_PRODUCTS) || '[]');
-      const storedIds = new Set(stored.map((p: any) => p.id));
-      const missing = initialProducts.filter((p) => !storedIds.has(p.id));
-      if (missing.length > 0) {
-        const merged = [...stored, ...missing];
-        localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(merged));
-      }
-    } catch {
-      // fallback
-    }
+    localStorage.setItem('icecream_db_initialized', 'true');
+  } else if (!isInit && !localStorage.getItem(LOCAL_PRODUCTS)) {
+    // Only set default if first time opening and not initialized
+    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_SALES, JSON.stringify([]));
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_EXPENSES, JSON.stringify([]));
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify([]));
+    localStorage.setItem('icecream_db_initialized', 'true');
   }
 
   if (!localStorage.getItem(SHOP_SETTINGS_KEY)) {
@@ -360,7 +357,7 @@ export const db = {
     try {
       if (supabase) {
         const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(data));
           return data;
         }
@@ -369,7 +366,7 @@ export const db = {
       console.warn('Supabase getProducts fallback:', err);
     }
     const prods = localStorage.getItem(LOCAL_PRODUCTS);
-    return prods ? JSON.parse(prods) : initialProducts;
+    return prods ? JSON.parse(prods) : [];
   },
 
   async createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {
@@ -844,6 +841,31 @@ export const db = {
     const expenses = await this.getExpenses();
     const filtered = expenses.filter((e) => e.id !== id);
     localStorage.setItem(LOCAL_EXPENSES, JSON.stringify(filtered));
+  },
+
+  async wipeAllData(includeProducts: boolean = true): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('sale_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('sales').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('stock_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        if (includeProducts) {
+          await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        }
+      } catch (err) {
+        console.warn('Supabase wipe error:', err);
+      }
+    }
+
+    localStorage.setItem(LOCAL_SALES, JSON.stringify([]));
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_EXPENSES, JSON.stringify([]));
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify([]));
+    if (includeProducts) {
+      localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify([]));
+    }
+    localStorage.setItem('icecream_db_initialized', 'true');
   },
 
   exportAllData(): string {
