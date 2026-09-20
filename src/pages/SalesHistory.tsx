@@ -142,8 +142,16 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
     loadAllData();
   }, []);
 
-  const handleOpenReceipt = (sale: Sale) => {
-    const items = saleItems.filter((i) => i.sale_id === sale.id);
+  const handleOpenReceipt = async (sale: Sale) => {
+    let items = saleItems.filter((i) => i.sale_id === sale.id);
+    if (items.length === 0) {
+      try {
+        const fresh = await db.getSaleItems(sale.id);
+        if (fresh && fresh.length > 0) {
+          items = fresh;
+        }
+      } catch {}
+    }
     setSelectedSale(sale);
     setReceiptItems(items);
     setShowReceipt(true);
@@ -206,9 +214,9 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   const dateFilteredSales = sales.filter((s) => filterByDate(s.created_at));
   const dateFilteredExpenses = expenses.filter((e) => filterByDate(e.created_at));
 
-  // Sales Pools (Separating Paid vs Free Samples)
-  const sampleSales = dateFilteredSales.filter((s) => s.payment_method === 'sample' || s.is_sample);
-  const paidSales = dateFilteredSales.filter((s) => s.payment_method !== 'sample' && !s.is_sample);
+  // Sales Pools (Separating Paid vs Free Samples - Any ₹0 total or sample method is counted)
+  const sampleSales = dateFilteredSales.filter((s) => s.payment_method === 'sample' || s.is_sample === true || s.total_price === 0);
+  const paidSales = dateFilteredSales.filter((s) => s.payment_method !== 'sample' && !s.is_sample && s.total_price > 0);
   const cashSales = paidSales.filter((s) => s.payment_method === 'cash' || !s.payment_method);
   const upiSales = paidSales.filter((s) => s.payment_method === 'upi');
   const cardSales = paidSales.filter((s) => s.payment_method === 'card');
@@ -217,7 +225,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   // Total items dispatched in free sample bills
   const totalSampleItemsCount = sampleSales.reduce((acc, s) => {
     const items = saleItems.filter((i) => i.sale_id === s.id);
-    return acc + items.reduce((sum, item) => sum + item.quantity, 0);
+    return acc + (items.length > 0 ? items.reduce((sum, item) => sum + item.quantity, 0) : 1);
   }, 0);
 
   // Expense Pools
@@ -240,7 +248,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
 
   // Search filtered Sales (Supporting All, Sample, Paid, Cash, UPI)
   const displaySales = dateFilteredSales.filter((s) => {
-    const isSample = s.payment_method === 'sample' || s.is_sample;
+    const isSample = s.payment_method === 'sample' || s.is_sample === true || s.total_price === 0;
     if (activePaymentTab === 'sample' && !isSample) return false;
     if (activePaymentTab === 'paid' && isSample) return false;
     if (activePaymentTab === 'cash' && (s.payment_method !== 'cash' || isSample) && s.payment_method !== undefined) return false;
@@ -1204,16 +1212,23 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
 
                     {/* Sample Items Dispatched */}
                     <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {items.map((item) => (
-                        <span
-                          key={item.id}
-                          className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-950/60 text-amber-200 border border-amber-500/30 flex items-center gap-1"
-                        >
-                          <span>🍨 {item.product_name}</span>
-                          <span className="bg-amber-500/30 px-1 py-0.2 rounded text-white">×{item.quantity}</span>
-                          <span className="text-amber-400 font-bold">(Free)</span>
+                      {items.length > 0 ? (
+                        items.map((item) => (
+                          <span
+                            key={item.id}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-950/80 text-amber-200 border border-amber-500/40 flex items-center gap-1.5 shadow-sm"
+                          >
+                            <span>🍨 {item.product_name}</span>
+                            <span className="bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-black">×{item.quantity}</span>
+                            <span className="text-amber-300 font-bold">(Free ₹0)</span>
+                            <span className="text-[9px] text-amber-400 font-bold">📉 Stock -{item.quantity}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-950/60 text-amber-300 border border-amber-500/30">
+                          🍨 Complimentary Tasting Samples (Stock Deducted)
                         </span>
-                      ))}
+                      )}
                     </div>
                   </div>
 
@@ -1239,10 +1254,18 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               );
             })
           ) : (
-            <div className="py-16 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-2">
-              <Gift className="w-8 h-8 mx-auto text-amber-500/50" />
-              <p className="text-xs font-medium">No free sample bills dispatched yet for this date range.</p>
-              <p className="text-[11px] text-slate-500">Create a sample bill from Billing (POS) using the "Sample 🎁 (₹0)" payment option!</p>
+            <div className="py-14 text-center bg-slate-900/60 rounded-2xl border border-white/5 text-slate-400 space-y-3 p-4">
+              <Gift className="w-10 h-10 mx-auto text-amber-400 animate-bounce" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-white">No 0 Rupees sample bills found for {getDateLabel()}</p>
+                <p className="text-xs text-slate-400">If you created sample bills earlier, tap the button below to view all time history:</p>
+              </div>
+              <button
+                onClick={() => setDateFilterPreset('all')}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-950 transition active:scale-95"
+              >
+                Show All Time Sample Bills (બધો હિસાબ) ➜
+              </button>
             </div>
           )}
         </div>

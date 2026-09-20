@@ -665,7 +665,7 @@ export const db = {
     const newSale: Sale = {
       id: saleId,
       total_price: finalTotal,
-      payment_method: details?.payment_method || 'cash',
+      payment_method: isSample ? 'sample' : (details?.payment_method || 'cash'),
       is_sample: isSample,
       customer_name: details?.customer_name?.trim() || undefined,
       customer_phone: details?.customer_phone?.trim() || undefined,
@@ -673,11 +673,56 @@ export const db = {
       created_at: now,
     };
 
+    // 1. Immediately persist to Local Storage so data is NEVER lost
+    for (const item of productsToUpdate) {
+      const idx = products.findIndex((p) => p.id === item.product.id);
+      if (idx > -1) {
+        products[idx].current_stock = item.newStock;
+        products[idx].sold_quantity = (products[idx].sold_quantity || 0) + item.soldQty;
+        products[idx].updated_at = now;
+      }
+    }
+    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
+
+    const existingSalesStr = localStorage.getItem(LOCAL_SALES);
+    const existingSales: Sale[] = existingSalesStr ? JSON.parse(existingSalesStr) : [];
+    const updatedSales = [newSale, ...existingSales.filter((s) => s.id !== newSale.id)];
+    localStorage.setItem(LOCAL_SALES, JSON.stringify(updatedSales));
+
+    const existingItemsStr = localStorage.getItem(LOCAL_SALE_ITEMS);
+    const existingItems: SaleItem[] = existingItemsStr ? JSON.parse(existingItemsStr) : [];
+    const updatedItems = [...existingItems.filter((i) => i.sale_id !== newSale.id), ...newItems];
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(updatedItems));
+
+    const existingTxsStr = localStorage.getItem(LOCAL_TRANSACTIONS);
+    const existingTxs: StockTransaction[] = existingTxsStr ? JSON.parse(existingTxsStr) : [];
+    const updatedTxs = [...newTransactions, ...existingTxs];
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(updatedTxs));
+
+    // 2. Sync to Supabase Cloud if available
     if (supabase) {
       try {
-        await supabase.from('sales').insert([newSale]);
+        const supabaseSalePayload: any = {
+          id: newSale.id,
+          total_price: newSale.total_price,
+          payment_method: newSale.payment_method,
+          created_at: newSale.created_at,
+        };
+        if (newSale.customer_name) supabaseSalePayload.customer_name = newSale.customer_name;
+        if (newSale.customer_phone) supabaseSalePayload.customer_phone = newSale.customer_phone;
+        if (newSale.discount) supabaseSalePayload.discount = newSale.discount;
+
+        await supabase.from('sales').insert([supabaseSalePayload]);
+        
         await supabase.from('sale_items').insert(
-          newItems.map(({ product_name, ...item }) => item)
+          newItems.map((item) => ({
+            id: item.id,
+            sale_id: item.sale_id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+          }))
         );
 
         for (const item of productsToUpdate) {
@@ -694,53 +739,68 @@ export const db = {
           newTransactions.map(({ product_name, ...tx }) => tx)
         );
       } catch (err) {
-        console.warn('Supabase createSale failed, saving to local storage');
+        console.warn('Supabase sync warning (data safely preserved in local storage):', err);
       }
     }
-
-    // Always update local storage
-    for (const item of productsToUpdate) {
-      const idx = products.findIndex((p) => p.id === item.product.id);
-      if (idx > -1) {
-        products[idx].current_stock = item.newStock;
-        products[idx].sold_quantity = (products[idx].sold_quantity || 0) + item.soldQty;
-        products[idx].updated_at = now;
-      }
-    }
-    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
-
-    const sales = await this.getSales();
-    sales.unshift(newSale);
-    localStorage.setItem(LOCAL_SALES, JSON.stringify(sales));
-
-    const saleItems = await this.getSaleItems();
-    saleItems.push(...newItems);
-    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(saleItems));
-
-    const transactions = await this.getTransactions();
-    transactions.unshift(...newTransactions);
-    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(transactions));
 
     return newSale;
   },
 
   async getSales(): Promise<Sale[]> {
+    const localSalesStr = localStorage.getItem(LOCAL_SALES);
+    const localSales: Sale[] = localSalesStr ? JSON.parse(localSalesStr) : [];
+    const saleMap = new Map<string, Sale>();
+    
+    // Seed with local sales first
+    localSales.forEach((s) => {
+      saleMap.set(s.id, {
+        ...s,
+        is_sample: s.is_sample === true || s.payment_method === 'sample' || s.total_price === 0,
+      });
+    });
+
     try {
       if (supabase) {
         const { data, error } = await supabase.from('sales').select('*').order('created_at', { ascending: false });
-        if (!error && data) {
-          localStorage.setItem(LOCAL_SALES, JSON.stringify(data));
-          return data;
+        if (!error && data && data.length > 0) {
+          data.forEach((s: any) => {
+            saleMap.set(s.id, {
+              ...s,
+              is_sample: s.is_sample === true || s.payment_method === 'sample' || s.total_price === 0,
+            });
+          });
         }
       }
     } catch (err) {
       console.warn('Supabase getSales fallback');
     }
-    const sales = localStorage.getItem(LOCAL_SALES);
-    return sales ? JSON.parse(sales) : [];
+
+    const mergedSales = Array.from(saleMap.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    localStorage.setItem(LOCAL_SALES, JSON.stringify(mergedSales));
+    return mergedSales;
   },
 
   async getSaleItems(saleId?: string): Promise<SaleItem[]> {
+    const products = await this.getProducts();
+    const productMap = new Map<string, string>();
+    products.forEach((p) => productMap.set(p.id, p.name));
+    initialProducts.forEach((p) => productMap.set(p.id, p.name));
+
+    const localItemsStr = localStorage.getItem(LOCAL_SALE_ITEMS);
+    const localItems: SaleItem[] = localItemsStr ? JSON.parse(localItemsStr) : [];
+    const itemMap = new Map<string, SaleItem>();
+
+    // Seed with local items first
+    localItems.forEach((item) => {
+      itemMap.set(item.id, {
+        ...item,
+        product_name: item.product_name || productMap.get(item.product_id) || 'Ice Cream Flavor',
+      });
+    });
+
     try {
       if (supabase) {
         let query = supabase.from('sale_items').select(`*, products (name)`);
@@ -748,22 +808,32 @@ export const db = {
           query = query.eq('sale_id', saleId);
         }
         const { data, error } = await query;
-        if (!error && data) {
-          return data.map((item: any) => ({
-            ...item,
-            product_name: item.products?.name || 'Unknown Product'
-          }));
+        if (!error && data && data.length > 0) {
+          data.forEach((item: any) => {
+            const resolvedName = item.products?.name || item.product_name || productMap.get(item.product_id) || 'Ice Cream Flavor';
+            itemMap.set(item.id, {
+              id: item.id,
+              sale_id: item.sale_id,
+              product_id: item.product_id,
+              product_name: resolvedName,
+              quantity: item.quantity,
+              price: item.price,
+              total: item.total,
+            });
+          });
         }
       }
     } catch (err) {
       console.warn('Supabase getSaleItems fallback');
     }
-    const items = localStorage.getItem(LOCAL_SALE_ITEMS);
-    const parsed: SaleItem[] = items ? JSON.parse(items) : [];
+
+    const mergedItems = Array.from(itemMap.values());
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(mergedItems));
+
     if (saleId) {
-      return parsed.filter((item) => item.sale_id === saleId);
+      return mergedItems.filter((item) => item.sale_id === saleId);
     }
-    return parsed;
+    return mergedItems;
   },
 
   // EXPENSES CRUD
