@@ -437,18 +437,26 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
                     )}
                   </div>
 
-                  {/* Product Details */}
+                  {/* Product Details - Tapping price opens rate editor */}
                   <div className="mb-2">
                     <h3 className="text-xs font-bold text-white line-clamp-1">{p.name}</h3>
                     <div className="flex justify-between items-center mt-0.5">
-                      <div className="flex items-baseline gap-1">
+                      <div
+                        onClick={() => handleOpenPriceModal(p)}
+                        className="flex items-baseline gap-1 cursor-pointer group"
+                        title="Click to edit rate / ભાવ બદલો"
+                      >
                         {hasCustomPrice ? (
                           <>
-                            <span className="text-sm font-black text-amber-300">₹{currentEffectivePrice}</span>
+                            <span className="text-sm font-black text-amber-300 group-hover:underline">₹{currentEffectivePrice}</span>
                             <span className="text-[10px] text-slate-500 line-through">₹{p.price}</span>
+                            <Edit3 className="w-2.5 h-2.5 text-amber-400 ml-0.5" />
                           </>
                         ) : (
-                          <span className="text-sm font-black text-purple-300">₹{p.price}</span>
+                          <>
+                            <span className="text-sm font-black text-purple-300 group-hover:underline">₹{p.price}</span>
+                            <Edit3 className="w-2.5 h-2.5 text-slate-500 group-hover:text-purple-300 ml-0.5" />
+                          </>
                         )}
                       </div>
                       <span className="text-[9px] text-slate-400 uppercase font-semibold">{p.category}</span>
@@ -920,7 +928,7 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
                     )
                   }
                   className="w-full pl-9 pr-10 py-3 bg-slate-950 border-2 border-amber-500/60 rounded-2xl text-lg font-black text-white outline-none focus:border-amber-400 ring-2 ring-amber-500/20"
-                  placeholder="e.g. 550"
+                  placeholder={String(editingPriceItem.defaultPrice)}
                 />
                 {editingPriceItem.tempPrice !== '' && (
                   <button
@@ -936,20 +944,34 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
               </div>
             </div>
 
-            {/* Quick Price Shortcuts */}
+            {/* Dynamic Quick Price Shortcuts Tailored to Item Price */}
             <div className="space-y-1.5">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Quick Preset Shortcuts:
+                Quick Shortcuts for ₹{editingPriceItem.defaultPrice}:
               </span>
               <div className="grid grid-cols-4 gap-1.5">
-                {[
-                  editingPriceItem.defaultPrice - 100,
-                  editingPriceItem.defaultPrice - 50,
-                  500,
-                  550,
-                  editingPriceItem.defaultPrice,
-                  editingPriceItem.defaultPrice + 50,
-                ]
+                {(editingPriceItem.defaultPrice <= 250
+                  ? [
+                      editingPriceItem.defaultPrice - 50,
+                      editingPriceItem.defaultPrice - 30,
+                      editingPriceItem.defaultPrice - 20,
+                      editingPriceItem.defaultPrice - 10,
+                      editingPriceItem.defaultPrice,
+                      editingPriceItem.defaultPrice + 20,
+                      150,
+                      180,
+                    ]
+                  : [
+                      editingPriceItem.defaultPrice - 100,
+                      editingPriceItem.defaultPrice - 50,
+                      500,
+                      520,
+                      550,
+                      580,
+                      editingPriceItem.defaultPrice,
+                      editingPriceItem.defaultPrice + 50,
+                    ]
+                )
                   .filter((price, idx, arr) => price > 0 && arr.indexOf(price) === idx)
                   .map((presetPrice) => (
                     <button
@@ -1018,4 +1040,5 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
     </div>
   );
 };
+
 

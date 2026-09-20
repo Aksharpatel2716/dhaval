@@ -95,7 +95,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   const [activePaymentTab, setActivePaymentTab] = useState<'all' | 'cash' | 'upi' | 'sample'>('all');
 
   // Time / Date range filter
-  const [dateFilterPreset, setDateFilterPreset] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
+  const [dateFilterPreset, setDateFilterPreset] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,6 +179,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
 
   // Filter function for Date
   const filterByDate = (created_at: string) => {
+    if (dateFilterPreset === 'all') return true;
     const itemDate = new Date(created_at);
     const itemDateStr = itemDate.toDateString();
 
@@ -210,6 +211,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
   const paidSales = dateFilteredSales.filter((s) => s.payment_method !== 'sample' && !s.is_sample);
   const cashSales = paidSales.filter((s) => s.payment_method === 'cash' || !s.payment_method);
   const upiSales = paidSales.filter((s) => s.payment_method === 'upi');
+  const cardSales = paidSales.filter((s) => s.payment_method === 'card');
   const totalSamplesGiven = sampleSales.length;
 
   // Expense Pools
@@ -262,6 +264,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
 
   // Date label string
   const getDateLabel = () => {
+    if (dateFilterPreset === 'all') return 'All Time (બધો હિસાબ)';
     if (dateFilterPreset === 'today') return `Today (${new Date().toLocaleDateString('en-IN')})`;
     if (dateFilterPreset === 'yesterday') return `Yesterday (${yesterday.toLocaleDateString('en-IN')})`;
     if (dateFilterPreset === 'week') return 'Last 7 Days';
@@ -494,6 +497,13 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       msg += `🎁 *FREE SAMPLES DISPATCHED:* ${totalSamplesGiven} bills (₹0 Complimentary)\n`;
     }
     msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🟢 *TOTAL SALES:* +₹${totalSalesRevenue.toLocaleString('en-IN')} (${paidSales.length} paid bills)\n`;
+    msg += `   ├ 💵 Cash Sales: +₹${totalCashSales.toLocaleString('en-IN')}\n`;
+    msg += `   └ 📱 UPI Sales: +₹${totalUpiSales.toLocaleString('en-IN')}\n`;
+    if (totalSamplesGiven > 0) {
+      msg += `🎁 *FREE PROMOTIONAL SAMPLES DISPATCHED:* ${totalSamplesGiven} Samples (₹0)\n`;
+    }
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `🔴 *TOTAL EXPENSES:* -₹${totalExpenseAmount.toLocaleString('en-IN')} (${dateFilteredExpenses.length} entries)\n`;
     msg += `   ├ 💵 Cash Expenses: -₹${totalCashExpenseAmount.toLocaleString('en-IN')}\n`;
     msg += `   └ 📱 UPI Expenses: -₹${totalUpiExpenseAmount.toLocaleString('en-IN')}\n`;
@@ -517,7 +527,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
             <span>📊 Sales & Hisab</span>
           </h1>
           <p className="text-[11px] text-slate-400">
-            Cash, UPI & Profit tracking
+            Cash, UPI, Samples & Profit tracking
           </p>
         </div>
 
@@ -618,7 +628,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               <span>Net Shop Profit</span>
             </span>
             <span className="text-[9px] bg-white/10 text-slate-300 font-bold px-1.5 py-0.5 rounded">
-              {dateFilteredSales.length} Sales • {dateFilteredExpenses.length} Expenses
+              {paidSales.length} Paid • {totalSamplesGiven} Samples
             </span>
           </div>
 
@@ -655,6 +665,16 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
 
         {/* Date Preset Buttons */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
+          <button
+            onClick={() => setDateFilterPreset('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition active:scale-95 ${
+              dateFilterPreset === 'all'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-white/5'
+            }`}
+          >
+            All Time (બધો હિસાબ)
+          </button>
           <button
             onClick={() => setDateFilterPreset('today')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition active:scale-95 ${
@@ -739,7 +759,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
             className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-md shadow-purple-950 transition flex items-center justify-center gap-2 active:scale-[0.99]"
           >
             <Download className="w-4 h-4" />
-            <span>Download Master Statement PDF (+ Sales & - Expenses Ledger with Date/Time)</span>
+            <span>Download Master Statement PDF (+ Sales, Samples & - Expenses Ledger)</span>
           </button>
 
           {/* Sub-PDFs */}
@@ -824,7 +844,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                   activePaymentTab === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400'
                 }`}
               >
-                All
+                All ({mainView === 'sales' ? dateFilteredSales.length : dateFilteredExpenses.length})
               </button>
               <button
                 onClick={() => setActivePaymentTab('cash')}
@@ -832,7 +852,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                   activePaymentTab === 'cash' ? 'bg-emerald-600 text-white' : 'text-emerald-400'
                 }`}
               >
-                Cash
+                Cash ({mainView === 'sales' ? cashSales.length : cashExpenses.length})
               </button>
               <button
                 onClick={() => setActivePaymentTab('upi')}
@@ -840,7 +860,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                   activePaymentTab === 'upi' ? 'bg-purple-600 text-white' : 'text-purple-400'
                 }`}
               >
-                UPI
+                UPI ({mainView === 'sales' ? upiSales.length : upiExpenses.length})
               </button>
               {mainView === 'sales' && (
                 <button
@@ -849,7 +869,8 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                     activePaymentTab === 'sample' ? 'bg-amber-600 text-white shadow-md' : 'text-amber-400 hover:text-amber-300'
                   }`}
                 >
-                  <span>🎁 Free Samples ({totalSamplesGiven})</span>
+                  <Gift className="w-3 h-3" />
+                  <span>Free Samples ({totalSamplesGiven})</span>
                 </button>
               )}
             </div>
@@ -912,6 +933,19 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                 </span>
               </div>
 
+              {/* Free Samples Dispatched Summary */}
+              {totalSamplesGiven > 0 && (
+                <div className="flex justify-between items-center p-2.5 bg-slate-950 rounded-xl border border-amber-500/30">
+                  <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                    <Gift className="w-4 h-4 text-amber-400" />
+                    <span>Free Tasting Samples Given</span>
+                  </span>
+                  <span className="font-black text-amber-300 text-sm">
+                    {totalSamplesGiven} Samples (₹0 Free)
+                  </span>
+                </div>
+              )}
+
               {/* Total Outflow */}
               <div className="flex justify-between items-center p-2.5 bg-slate-950 rounded-xl border border-rose-500/20">
                 <span className="font-bold text-slate-300 flex items-center gap-1.5">
@@ -962,7 +996,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-white flex items-center gap-1">
                   <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Recent Sales ({dateFilteredSales.length})</span>
+                  <span>Recent Sales & Samples ({dateFilteredSales.length})</span>
                 </span>
                 <button
                   onClick={() => setMainView('sales')}
@@ -973,15 +1007,33 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               </div>
 
               <div className="space-y-1.5">
-                {dateFilteredSales.slice(0, 4).map((s) => (
-                  <div key={s.id} onClick={() => handleOpenReceipt(s)} className="p-2 bg-slate-950 rounded-xl border border-white/5 flex justify-between items-center text-xs cursor-pointer hover:border-purple-500/30">
-                    <div>
-                      <span className="font-mono text-purple-300 font-bold">#{s.id.substring(5, 11).toUpperCase()}</span>
-                      <span className="text-[10px] text-slate-400 block">{formatTime(s.created_at)} • {(s.payment_method || 'cash').toUpperCase()}</span>
+                {dateFilteredSales.slice(0, 5).map((s) => {
+                  const isSamp = s.payment_method === 'sample' || s.is_sample;
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => handleOpenReceipt(s)}
+                      className={`p-2 rounded-xl border flex justify-between items-center text-xs cursor-pointer transition ${
+                        isSamp
+                          ? 'bg-amber-950/20 border-amber-500/40 hover:border-amber-500/70'
+                          : 'bg-slate-950 border-white/5 hover:border-purple-500/30'
+                      }`}
+                    >
+                      <div>
+                        <span className={`font-mono font-bold ${isSamp ? 'text-amber-400' : 'text-purple-300'}`}>
+                          #{s.id.substring(5, 11).toUpperCase()}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          {formatTime(s.created_at)} • {isSamp ? '🎁 FREE SAMPLE' : (s.payment_method || 'cash').toUpperCase()}
+                          {s.customer_name ? ` • ${s.customer_name}` : ''}
+                        </span>
+                      </div>
+                      <span className={`font-black ${isSamp ? 'text-amber-400' : 'text-white'}`}>
+                        {isSamp ? '₹0 (Free)' : `₹${s.total_price}`}
+                      </span>
                     </div>
-                    <span className="font-black text-white">₹{s.total_price}</span>
-                  </div>
-                ))}
+                  );
+                })}
                 {dateFilteredSales.length === 0 && (
                   <p className="text-xs text-slate-500 text-center py-4">No sales recorded for this date range.</p>
                 )}
@@ -1004,7 +1056,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               </div>
 
               <div className="space-y-1.5">
-                {dateFilteredExpenses.slice(0, 4).map((e) => (
+                {dateFilteredExpenses.slice(0, 5).map((e) => (
                   <div key={e.id} className="p-2 bg-slate-950 rounded-xl border border-white/5 flex justify-between items-center text-xs">
                     <div className="min-w-0 pr-2">
                       <span className="font-bold text-white truncate block">{e.description}</span>
