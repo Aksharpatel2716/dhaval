@@ -47,6 +47,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [themeMode, setThemeMode] = useState<'clean' | 'dark' | 'thermal'>('clean');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   if (!isOpen || !sale) return null;
 
@@ -587,50 +588,81 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {/* Copy Text */}
-            <button
-              onClick={handleCopyText}
-              className="py-2 bg-slate-900 hover:bg-slate-800 active:scale-98 text-slate-300 rounded-xl text-[11px] font-semibold border border-white/10 transition flex items-center justify-center gap-1"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied!' : 'Copy Text'}</span>
-            </button>
-
-            {/* Delete Bill (Restore Stock & Deduct from Hisab) */}
-            {onDeleteSale && (
-              <button
-                disabled={isDeleting}
-                onClick={async () => {
-                  const totalUnits = items.reduce((sum, i) => sum + i.quantity, 0);
-                  const isSample = sale.payment_method === 'sample' || sale.is_sample;
-                  const confirmMsg = `Are you sure you want to DELETE ${isSample ? 'Sample Slip' : 'Bill'} #${sale.id.substring(5, 11).toUpperCase()}?\n\n• ${totalUnits} items will be RETURNED (+) to Stock Inventory\n• ₹${sale.total_price} will be REMOVED (-) from Sales Hisab\n\nશું તમે આ બિલ ડિલીટ કરવા માંગો છો? આઈસ્ક્રીમ સ્ટોકમાં પાછો જમા થઈ જશે.`;
-                  if (window.confirm(confirmMsg)) {
-                    setIsDeleting(true);
-                    try {
-                      await onDeleteSale(sale.id);
-                      onClose();
-                    } finally {
-                      setIsDeleting(false);
+          {/* Delete Bill In-Modal Authority Confirmation Card */}
+          {isConfirmingDelete && (
+            <div className="p-3 bg-rose-950/80 border-2 border-rose-500/50 rounded-2xl space-y-2 animate-scale-pop">
+              <div className="flex items-center gap-2 text-rose-300 font-black text-xs">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>Confirm Bill Deletion (બિલ રદ કરવાની ઓથોરિટી)</span>
+              </div>
+              <p className="text-[11px] text-slate-200">
+                • <strong>{totalItemCount} items</strong> will be returned (+) to Stock Inventory<br />
+                • <strong>₹{sale.total_price}</strong> will be deducted (-) from Sales Hisab
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingDelete(false)}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (onDeleteSale) {
+                      setIsDeleting(true);
+                      try {
+                        await onDeleteSale(sale.id);
+                        setIsConfirmingDelete(false);
+                        onClose();
+                      } finally {
+                        setIsDeleting(false);
+                      }
                     }
-                  }
-                }}
-                className="py-2 bg-rose-950/40 hover:bg-rose-900/60 active:scale-98 text-rose-300 hover:text-rose-200 border border-rose-500/30 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-sm"
-                title="Delete this bill and restore stock"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>{isDeleting ? 'Deleting...' : 'Delete Bill'}</span>
-              </button>
-            )}
+                  }}
+                  className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-950 flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeleting ? 'Deleting...' : 'YES, DELETE BILL (+)'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-            {/* Done / Close */}
-            <button
-              onClick={onClose}
-              className="py-2 bg-slate-800 hover:bg-slate-700 active:scale-98 text-white rounded-xl text-[11px] font-bold transition"
-            >
-              Done (Close)
-            </button>
-          </div>
+          {!isConfirmingDelete && (
+            <div className="grid grid-cols-3 gap-2">
+              {/* Copy Text */}
+              <button
+                onClick={handleCopyText}
+                className="py-2 bg-slate-900 hover:bg-slate-800 active:scale-98 text-slate-300 rounded-xl text-[11px] font-semibold border border-white/10 transition flex items-center justify-center gap-1"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied!' : 'Copy Text'}</span>
+              </button>
+
+              {/* Delete Bill (Restore Stock & Deduct from Hisab) */}
+              {onDeleteSale && (
+                <button
+                  onClick={() => setIsConfirmingDelete(true)}
+                  className="py-2 bg-rose-950/60 hover:bg-rose-900/80 active:scale-98 text-rose-300 hover:text-rose-100 border border-rose-500/50 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-sm"
+                  title="Delete this bill and restore stock"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Delete Bill</span>
+                </button>
+              )}
+
+              {/* Done / Close */}
+              <button
+                onClick={onClose}
+                className="py-2 bg-slate-800 hover:bg-slate-700 active:scale-98 text-white rounded-xl text-[11px] font-bold transition"
+              >
+                Done (Close)
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Specialized Thermal Printer CSS Media Styles */}
