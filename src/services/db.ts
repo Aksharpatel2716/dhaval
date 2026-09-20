@@ -918,6 +918,24 @@ export const db = {
     localStorage.setItem(LOCAL_EXPENSES, JSON.stringify(filtered));
   },
 
+  async clearHisabOnly(): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('sale_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('sales').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('stock_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (err) {
+        console.warn('Supabase clearHisabOnly error:', err);
+      }
+    }
+
+    localStorage.setItem(LOCAL_SALES, JSON.stringify([]));
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_EXPENSES, JSON.stringify([]));
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify([]));
+  },
+
   async wipeAllData(includeProducts: boolean = true): Promise<void> {
     if (supabase) {
       try {

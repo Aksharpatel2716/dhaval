@@ -547,7 +547,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {/* Add Single Expense */}
           <button
             onClick={() => {
@@ -560,13 +560,36 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
             <span>+ Kharcha</span>
           </button>
 
+          {/* Clear Hisab Button */}
+          <button
+            onClick={async () => {
+              const confirmClear = window.confirm(
+                'Are you sure you want to CLEAR ALL HISAB (Sales, Sample Slips & Expenses)?\n\nશું તમે બધો હિસાબ સાફ કરવા માંગો છો?\n\n(Products and Catalog will stay 100% safe)'
+              );
+              if (confirmClear) {
+                try {
+                  await db.clearHisabOnly();
+                  triggerToast('હિસાબ સાફ થઈ ગયો છે (All Hisab Cleared successfully)! 🧹', 'success');
+                  await loadAllData();
+                } catch (err: any) {
+                  triggerToast('Failed to clear hisab', 'error');
+                }
+              }
+            }}
+            className="px-2.5 py-2 bg-slate-900 hover:bg-rose-950/60 active:scale-95 text-rose-300 hover:text-rose-200 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow"
+            title="Clear Hisab"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Clear Hisab</span>
+          </button>
+
           {/* WhatsApp Share */}
           <button
             onClick={handleShareDaySummary}
-            className="p-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-950"
+            className="p-2 bg-slate-900 hover:bg-slate-800 border border-white/10 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow"
             title="WhatsApp Summary"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-4 h-4 text-emerald-400" />
           </button>
 
           <button
@@ -585,27 +608,27 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         
         {/* Card 1: NET CASH IN HAND (Cash Sales - Cash Expenses) */}
-        <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3 sm:p-3.5 space-y-1 relative overflow-hidden shadow-lg">
+        <div className="bg-slate-900/90 border border-white/15 rounded-2xl p-3 sm:p-3.5 space-y-1 relative overflow-hidden shadow-lg">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-              <Banknote className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+              <Banknote className="w-3.5 h-3.5 text-slate-400" />
               <span>Cash In Hand</span>
             </span>
-            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-500/30">
+            <span className="text-[9px] bg-slate-800 text-slate-300 font-bold px-1.5 py-0.2 rounded border border-white/10">
               💵 Drawer
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
             <span className={`text-xl sm:text-2xl font-black ${
-              netCashInHand >= 0 ? 'text-emerald-300' : 'text-rose-400'
+              netCashInHand >= 0 ? 'text-white' : 'text-rose-400'
             }`}>
               ₹{netCashInHand.toLocaleString('en-IN')}
             </span>
           </div>
 
           <div className="text-[9px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1 font-medium">
-            <span className="text-emerald-400">+₹{totalCashSales}</span>
+            <span className="text-slate-300">+₹{totalCashSales}</span>
             <span className="text-rose-400">-₹{totalCashExpenseAmount}</span>
           </div>
         </div>
@@ -813,9 +836,9 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button
               onClick={() => handleDownloadSalesPDF('cash')}
-              className="py-2 px-3 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+              className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-white/10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <Download className="w-3.5 h-3.5 text-slate-300" />
               <span>Cash Inflow (+) Sales PDF</span>
             </button>
 
@@ -882,11 +905,11 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                 mainView === 'sales' && activePaymentTab === 'paid'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-slate-800 text-white shadow-md ring-1 ring-white/20'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+              <TrendingUp className="w-3.5 h-3.5 text-slate-300" />
               <span>Paid Sales ({paidSales.length})</span>
             </button>
 
@@ -937,7 +960,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
               <button
                 onClick={() => setActivePaymentTab('cash')}
                 className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition whitespace-nowrap ${
-                  activePaymentTab === 'cash' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-400'
+                  activePaymentTab === 'cash' ? 'bg-slate-800 text-white shadow-sm ring-1 ring-white/20' : 'text-slate-400'
                 }`}
               >
                 Cash ({cashSales.length})
@@ -1357,13 +1380,13 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                       ? 'bg-slate-900/90 border-purple-500/25 hover:border-purple-500/50'
                       : isCard
                       ? 'bg-slate-900/90 border-blue-500/25 hover:border-blue-500/50'
-                      : 'bg-slate-900/90 border-emerald-500/25 hover:border-emerald-500/50'
+                      : 'bg-slate-900/90 border-white/10 hover:border-white/25'
                   }`}
                 >
                   {/* Left: Bill Info */}
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-mono text-xs font-black ${isSample ? 'text-amber-300' : 'text-purple-400'}`}>
+                      <span className={`font-mono text-xs font-black ${isSample ? 'text-amber-300' : 'text-slate-300'}`}>
                         #{sale.id.substring(5, 11).toUpperCase()}
                       </span>
                       <span
@@ -1374,7 +1397,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                             ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
                             : isCard
                             ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
-                            : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-slate-800 text-slate-200 border border-white/10'
                         }`}
                       >
                         {isSample ? '🎁 0 RUPEES BILL (₹0 સેમ્પલ બિલ)' : isUpi ? <QrCode className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
@@ -1427,7 +1450,7 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
                       className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md ${
                         isSample
                           ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-950'
-                          : 'bg-purple-600/20 hover:bg-purple-600 border border-purple-500/30 text-purple-300 hover:text-white'
+                          : 'bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-200 hover:text-white'
                       }`}
                     >
                       <FileText className="w-3.5 h-3.5" />

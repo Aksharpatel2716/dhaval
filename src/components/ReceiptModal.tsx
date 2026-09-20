@@ -152,9 +152,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <div className={`p-2 rounded-xl shrink-0 ${
               isSample
                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-slate-800 text-white border border-white/20'
             }`}>
-              {isSample ? <Gift className="w-4 h-4 text-amber-400" /> : <CheckCircle2 className="w-4 h-4" />}
+              {isSample ? <Gift className="w-4 h-4 text-amber-400" /> : <Receipt className="w-4 h-4 text-white" />}
             </div>
             <div className="min-w-0">
               <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider flex items-center gap-1.5 truncate">
@@ -162,9 +162,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
                   isSample
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-slate-800 text-slate-200 border-slate-600'
                 }`}>
-                  {isSample ? '🎁 FREE SAMPLE' : 'PAID'}
+                  {isSample ? '🎁 FREE SAMPLE' : 'PAID BILL'}
                 </span>
               </h3>
               <p className="text-[10px] text-slate-400 truncate">
@@ -181,7 +181,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 title="Clean White Luxury Receipt"
                 className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
                   themeMode === 'clean'
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-slate-800 text-white shadow-sm ring-1 ring-white/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -189,10 +189,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               </button>
               <button
                 onClick={() => setThemeMode('dark')}
-                title="Dark Neon Theme"
+                title="Dark Theme"
                 className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
                   themeMode === 'dark'
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-slate-800 text-white shadow-sm ring-1 ring-white/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -203,7 +203,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 title="Thermal Paper Slip"
                 className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
                   themeMode === 'thermal'
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-slate-800 text-white shadow-sm ring-1 ring-white/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -231,7 +231,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               themeMode === 'clean'
                 ? 'bg-white text-slate-900 border border-slate-200 p-5 sm:p-6 font-sans'
                 : themeMode === 'dark'
-                ? 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white border border-purple-500/30 p-5 sm:p-6 font-sans'
+                ? 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white border border-white/15 p-5 sm:p-6 font-sans'
                 : 'bg-[#fafafa] text-slate-900 border-2 border-dashed border-slate-300 p-5 font-mono shadow-inner'
             }`}
           >
@@ -251,7 +251,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 : 'border-dashed border-slate-300'
             }`}>
               {/* Logo Icon Badge */}
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/20 mb-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-950 text-white shadow-lg shadow-black/30 mb-2 border border-white/10">
                 <span className="text-2xl drop-shadow">{isSample ? '🎁' : '🍨'}</span>
               </div>
 
@@ -267,10 +267,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
               <p className={`text-xs font-bold mt-0.5 ${
                 themeMode === 'clean'
-                  ? 'text-purple-600'
+                  ? 'text-slate-700'
                   : themeMode === 'dark'
-                  ? 'text-purple-300'
-                  : 'text-purple-700'
+                  ? 'text-slate-300'
+                  : 'text-slate-700'
               }`}>
                 {isSample ? '🎁 Free Tasting / Promotional Sample Pack' : shop.tagline}
               </p>
@@ -283,11 +283,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   : 'text-slate-600'
               }`}>
                 <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-purple-500" />
+                  <MapPin className="w-3 h-3 text-slate-600 dark:text-slate-400" />
                   <span>{shop.address}</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-purple-500" />
+                  <Phone className="w-3 h-3 text-slate-600 dark:text-slate-400" />
                   <span>Mo: {shop.phone}</span>
                 </span>
               </div>
@@ -296,7 +296,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             {/* 2. INVOICE META & CUSTOMER DETAILS CARD */}
             <div className={`my-3.5 p-3 rounded-xl text-xs space-y-2 ${
               themeMode === 'clean'
-                ? 'bg-slate-50 border border-slate-100 text-slate-700'
+                ? 'bg-slate-50 border border-slate-200 text-slate-700'
                 : themeMode === 'dark'
                 ? 'bg-slate-950/80 border border-white/10 text-slate-300'
                 : 'bg-white border border-slate-200 text-slate-800'
@@ -304,11 +304,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               {/* Row 1: Invoice No & Date */}
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <div className="flex items-center gap-1.5">
-                  <Receipt className="w-3.5 h-3.5 text-purple-500" />
-                  <span className="text-[10px] uppercase font-bold text-slate-400">
+                  <Receipt className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
+                  <span className="text-[10px] uppercase font-bold text-slate-500">
                     {isSample ? 'Sample No:' : 'Invoice:'}
                   </span>
-                  <span className="font-mono font-black text-xs text-purple-600">
+                  <span className="font-mono font-black text-xs text-slate-950 dark:text-white">
                     #{sale.id.substring(5, 11).toUpperCase()}
                   </span>
                 </div>
@@ -327,7 +327,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <div className="flex items-center justify-between pt-1 border-t border-dashed border-slate-200/50">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="text-[10px] text-slate-400 uppercase font-bold">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">
                       {isSample ? 'Client / Recipient:' : 'Customer:'}
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white">
@@ -342,19 +342,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 </div>
               )}
 
-              {/* Row 3: Payment Method Pill */}
+              {/* Row 3: Payment Method Pill (Jet Black Theme) */}
               <div className="flex items-center justify-between pt-1 border-t border-dashed border-slate-200/50">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Bill Type:</span>
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
+                <span className="text-[10px] uppercase font-bold text-slate-500">Bill Type:</span>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider ${
                   isSample
-                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                    ? 'bg-amber-500 text-slate-950 border border-amber-400'
                     : isUpi
-                    ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                    ? 'bg-purple-900 text-purple-100 border border-purple-700'
                     : isCard
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                    : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                    ? 'bg-blue-900 text-blue-100 border border-blue-700'
+                    : 'bg-slate-900 text-white border border-slate-700'
                 }`}>
-                  {isSample ? <Gift className="w-3 h-3 text-amber-600" /> : isUpi ? <Smartphone className="w-3 h-3" /> : isCard ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                  {isSample ? <Gift className="w-3 h-3 text-slate-950" /> : isUpi ? <Smartphone className="w-3 h-3" /> : isCard ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
                   <span>{isSample ? '🎁 FREE TRIAL SAMPLE (₹0)' : isUpi ? 'PAID VIA UPI' : isCard ? 'PAID VIA CARD' : 'PAID IN CASH'}</span>
                 </span>
               </div>
@@ -366,12 +366,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <thead>
                   <tr className={`border-b text-[10px] font-black uppercase tracking-wider ${
                     themeMode === 'clean'
-                      ? 'border-slate-200 text-slate-400'
+                      ? 'border-slate-200 text-slate-500 bg-slate-50'
                       : themeMode === 'dark'
-                      ? 'border-white/10 text-slate-400'
+                      ? 'border-white/10 text-slate-400 bg-slate-950/50'
                       : 'border-slate-300 text-slate-600'
                   }`}>
-                    <th className="py-2 font-black">Item & Flavor</th>
+                    <th className="py-2 px-1 font-black">Item & Flavor</th>
                     <th className="py-2 text-center font-black">Qty</th>
                     <th className="py-2 text-right font-black">Rate</th>
                     <th className="py-2 text-right font-black">Amount</th>
@@ -385,7 +385,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     : 'divide-slate-200'
                 }`}>
                   {items.map((item, idx) => (
-                    <tr key={item.id} className="hover:bg-purple-50/20 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-2.5 pr-2 font-bold">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">{isSample ? '🎁' : '🍨'}</span>
@@ -410,7 +410,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                           themeMode === 'clean'
                             ? 'bg-slate-100 text-slate-800'
                             : themeMode === 'dark'
-                            ? 'bg-slate-800 text-purple-300'
+                            ? 'bg-slate-800 text-slate-200'
                             : 'bg-slate-200 text-slate-900'
                         }`}>
                           × {item.quantity}
@@ -427,7 +427,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                           : themeMode === 'clean'
                           ? 'text-slate-900'
                           : themeMode === 'dark'
-                          ? 'text-purple-300'
+                          ? 'text-white'
                           : 'text-slate-900'
                       }`}>
                         {isSample ? 'FREE' : `₹${item.total.toLocaleString('en-IN')}`}
@@ -447,13 +447,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 : 'border-dashed border-slate-300 text-slate-700'
             }`}>
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-400">Total Quantity Dispatched:</span>
+                <span className="text-slate-500">Total Quantity Dispatched:</span>
                 <span className="font-bold">{totalItemCount} scoops / packs</span>
               </div>
 
               {!isSample && (
                 <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-slate-400">Subtotal:</span>
+                  <span className="text-slate-500">Subtotal:</span>
                   <span className="font-bold">
                     ₹{(sale.total_price + (sale.discount || 0)).toLocaleString('en-IN')}
                   </span>
@@ -468,30 +468,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               )}
 
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-400">{isSample ? 'Sample Type:' : 'Tax / GST:'}</span>
-                <span className={`font-semibold ${isSample ? 'text-amber-600' : 'text-emerald-600'}`}>
+                <span className="text-slate-500">{isSample ? 'Sample Type:' : 'Tax / GST:'}</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
                   {isSample ? '100% Free Promotional Sample (₹0)' : 'Inclusive (0% CGST + 0% SGST)'}
                 </span>
               </div>
 
-              {/* GRAND TOTAL HERO BANNER */}
-              <div className={`p-3.5 rounded-2xl flex items-center justify-between mt-3 shadow-md ${
+              {/* GRAND TOTAL HERO BANNER (JET BLACK LUXURY THEME) */}
+              <div className={`p-3.5 rounded-2xl flex items-center justify-between mt-3 shadow-lg ${
                 isSample
                   ? 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 text-slate-950 font-black'
-                  : themeMode === 'clean'
-                  ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white'
-                  : themeMode === 'dark'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-700 text-white border border-purple-400/40'
-                  : 'bg-slate-900 text-white'
+                  : 'bg-gradient-to-r from-slate-950 via-slate-900 to-black text-white border border-slate-800'
               }`}>
                 <div>
                   <span className={`text-[10px] font-black uppercase tracking-widest block ${
-                    isSample ? 'text-amber-950' : 'text-purple-200'
+                    isSample ? 'text-amber-950' : 'text-slate-300'
                   }`}>
                     {isSample ? '🎁 SAMPLE BILL TOTAL' : 'GRAND TOTAL PAID'}
                   </span>
                   <span className={`text-[10px] font-medium ${
-                    isSample ? 'text-amber-900' : 'text-purple-100/80'
+                    isSample ? 'text-amber-900' : 'text-slate-400'
                   }`}>
                     {isSample ? '(100% Complimentary Trial)' : '(Net Amount Received)'}
                   </span>
@@ -512,13 +508,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 ? 'border-white/10'
                 : 'border-dashed border-slate-300'
             }`}>
-              {/* Verified Shield Pill */}
+              {/* Verified Shield Pill (Black / Dark Slate Theme) */}
               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider border ${
                 isSample
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-slate-900 border-slate-700 text-white'
               }`}>
-                <ShieldCheck className={`w-3.5 h-3.5 ${isSample ? 'text-amber-500' : 'text-emerald-500'}`} />
+                <ShieldCheck className={`w-3.5 h-3.5 ${isSample ? 'text-amber-500' : 'text-slate-300'}`} />
                 <span>{isSample ? 'OFFICIAL SAMPLE DISPATCH SLIP' : 'OFFICIAL VERIFIED POS RECEIPT'}</span>
               </div>
 
