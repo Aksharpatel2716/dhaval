@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, getProductStatus } from '../services/db';
 import { Product, StockTransaction } from '../types';
+import { initialProducts } from '../services/db';
 import {
   Plus,
   Minus,
@@ -21,8 +22,15 @@ interface StockProps {
 }
 
 export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const p = localStorage.getItem('icecream_db_products');
+      return p ? JSON.parse(p) : initialProducts;
+    } catch {
+      return initialProducts;
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'low' | 'out'>('all');
 
@@ -52,11 +60,15 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
   const loadData = async () => {
     try {
       const prods = await db.getProducts();
-      setProducts(prods);
+      if (prods && prods.length > 0) {
+        setProducts(prods);
+      }
       const txs = await db.getTransactions();
-      setTransactions(txs.slice(0, 30));
+      if (txs) {
+        setTransactions(txs.slice(0, 30));
+      }
     } catch {
-      triggerToast('Failed to load stock data', 'error');
+      console.warn('Stock loadData fallback');
     } finally {
       setLoading(false);
     }

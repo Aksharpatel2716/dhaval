@@ -61,10 +61,31 @@ interface SalesHistoryProps {
 }
 
 export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sales, setSales] = useState<Sale[]>(() => {
+    try {
+      const s = localStorage.getItem('icecream_db_sales');
+      return s ? JSON.parse(s) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [saleItems, setSaleItems] = useState<SaleItem[]>(() => {
+    try {
+      const si = localStorage.getItem('icecream_db_sale_items');
+      return si ? JSON.parse(si) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    try {
+      const ex = localStorage.getItem('icecream_db_expenses');
+      return ex ? JSON.parse(ex) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
 
   // Active Main View: 'summary' | 'sales' | 'expenses'
   const [mainView, setMainView] = useState<'summary' | 'sales' | 'expenses'>('summary');
@@ -106,11 +127,11 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ triggerToast }) => {
       const sls = await db.getSales();
       const items = await db.getSaleItems();
       const exps = await db.getExpenses();
-      setSales(sls);
-      setSaleItems(items);
-      setExpenses(exps);
+      if (sls) setSales(sls);
+      if (items) setSaleItems(items);
+      if (exps) setExpenses(exps);
     } catch {
-      triggerToast('Failed to load records', 'error');
+      console.warn('SalesHistory loadAllData fallback');
     } finally {
       setLoading(false);
     }

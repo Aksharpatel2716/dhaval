@@ -37,10 +37,13 @@ export const initSupabase = (url: string, key: string): boolean => {
   }
 };
 
+const DEFAULT_SUPABASE_URL = 'https://tcikymhncoqgqpzxrjlw.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWt5bWhuY29xZ3Fwenhyamx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NDUzMDUsImV4cCI6MjEwNTIyMTMwNX0.sfzAxgU-bnADEeyJuMVY5AWxxya8mfucDftbXtILtVw';
+
 // Check and load stored Supabase settings
 const loadStoredSupabase = () => {
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
   const url = localStorage.getItem(SB_URL_KEY) || envUrl;
   const key = localStorage.getItem(SB_KEY_KEY) || envKey;
   if (url && key) {
@@ -354,14 +357,19 @@ export const db = {
 
   // PRODUCTS CRUD
   async getProducts(): Promise<Product[]> {
-    if (supabase) {
-      const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
-      if (error) throw error;
-      return data;
-    } else {
-      const prods = localStorage.getItem(LOCAL_PRODUCTS);
-      return prods ? JSON.parse(prods) : [];
+    try {
+      if (supabase) {
+        const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
+        if (!error && data && data.length > 0) {
+          localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(data));
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getProducts fallback:', err);
     }
+    const prods = localStorage.getItem(LOCAL_PRODUCTS);
+    return prods ? JSON.parse(prods) : initialProducts;
   },
 
   async createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {
@@ -380,41 +388,46 @@ export const db = {
     };
 
     if (supabase) {
-      const { data, error } = await supabase.from('products').insert([newProduct]).select();
-      if (error) throw error;
+      try {
+        const { data, error } = await supabase.from('products').insert([newProduct]).select();
+        if (!error && data && data.length > 0) {
+          await supabase.from('stock_transactions').insert([{
+            product_id: data[0].id,
+            action_type: 'added',
+            quantity: newProduct.current_stock,
+            prev_stock: 0,
+            new_stock: newProduct.current_stock,
+            notes: 'Product added',
+          }]);
+        }
+      } catch (err) {
+        console.warn('Supabase createProduct fallback to local');
+      }
+    }
 
-      await supabase.from('stock_transactions').insert([{
-        product_id: data[0].id,
-        action_type: 'added',
-        quantity: newProduct.current_stock,
-        prev_stock: 0,
-        new_stock: newProduct.current_stock,
-        notes: 'Product added',
-      }]);
-
-      return data[0];
-    } else {
-      const products = await this.getProducts();
+    const products = await this.getProducts();
+    const existingIdx = products.findIndex((p) => p.id === id);
+    if (existingIdx === -1) {
       products.push(newProduct);
       localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
-
-      const tx: StockTransaction = {
-        id: `tx-${Date.now()}`,
-        product_id: id,
-        product_name: newProduct.name,
-        action_type: 'added',
-        quantity: newProduct.current_stock,
-        prev_stock: 0,
-        new_stock: newProduct.current_stock,
-        notes: 'Product added',
-        created_at: now,
-      };
-      const txs = await this.getTransactions();
-      txs.unshift(tx);
-      localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(txs));
-
-      return newProduct;
     }
+
+    const tx: StockTransaction = {
+      id: `tx-${Date.now()}`,
+      product_id: id,
+      product_name: newProduct.name,
+      action_type: 'added',
+      quantity: newProduct.current_stock,
+      prev_stock: 0,
+      new_stock: newProduct.current_stock,
+      notes: 'Product added',
+      created_at: now,
+    };
+    const txs = await this.getTransactions();
+    txs.unshift(tx);
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(txs));
+
+    return newProduct;
   },
 
   async updateProduct(id: string, updates: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>): Promise<Product> {
@@ -424,51 +437,43 @@ export const db = {
       throw new Error('Stock cannot be negative (minimum is 0)!');
     }
 
+    const products = await this.getProducts();
+    const idx = products.findIndex((p) => p.id === id);
+    const oldProd = idx > -1 ? products[idx] : null;
+    const targetStock = updates.current_stock !== undefined 
+      ? Math.max(0, updates.current_stock) 
+      : (oldProd ? oldProd.current_stock : 0);
+
+    const cleanUpdates = { ...updates, current_stock: targetStock, updated_at: now };
+
     if (supabase) {
-      const { data: oldProd, error: getErr } = await supabase.from('products').select('*').eq('id', id).single();
-      if (getErr) throw getErr;
-
-      const targetStock = updates.current_stock !== undefined ? Math.max(0, updates.current_stock) : oldProd.current_stock;
-      const cleanUpdates = { ...updates, current_stock: targetStock, updated_at: now };
-
-      const { data, error } = await supabase.from('products')
-        .update(cleanUpdates)
-        .eq('id', id)
-        .select();
-      if (error) throw error;
-
-      if (updates.current_stock !== undefined && updates.current_stock !== oldProd.current_stock) {
-        const diff = updates.current_stock - oldProd.current_stock;
-        await supabase.from('stock_transactions').insert([{
-          product_id: id,
-          action_type: diff > 0 ? 'added' : 'removed',
-          quantity: Math.abs(diff),
-          prev_stock: oldProd.current_stock,
-          new_stock: updates.current_stock,
-          notes: `Updated stock (${diff > 0 ? '+' : ''}${diff})`,
-        }]);
+      try {
+        await supabase.from('products').update(cleanUpdates).eq('id', id);
+        if (oldProd && updates.current_stock !== undefined && updates.current_stock !== oldProd.current_stock) {
+          const diff = updates.current_stock - oldProd.current_stock;
+          await supabase.from('stock_transactions').insert([{
+            product_id: id,
+            action_type: diff > 0 ? 'added' : 'removed',
+            quantity: Math.abs(diff),
+            prev_stock: oldProd.current_stock,
+            new_stock: updates.current_stock,
+            notes: `Updated stock (${diff > 0 ? '+' : ''}${diff})`,
+          }]);
+        }
+      } catch (err) {
+        console.warn('Supabase updateProduct fallback');
       }
+    }
 
-      return data[0];
-    } else {
-      const products = await this.getProducts();
-      const idx = products.findIndex((p) => p.id === id);
-      if (idx === -1) throw new Error('Product not found');
-
-      const oldProd = products[idx];
-      const targetStock = updates.current_stock !== undefined ? Math.max(0, updates.current_stock) : oldProd.current_stock;
-
+    if (idx > -1) {
       const updatedProduct: Product = {
-        ...oldProd,
-        ...updates,
-        current_stock: targetStock,
-        updated_at: now,
+        ...products[idx],
+        ...cleanUpdates,
       };
-
       products[idx] = updatedProduct;
       localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
 
-      if (updates.current_stock !== undefined && updates.current_stock !== oldProd.current_stock) {
+      if (oldProd && updates.current_stock !== undefined && updates.current_stock !== oldProd.current_stock) {
         const diff = updates.current_stock - oldProd.current_stock;
         const tx: StockTransaction = {
           id: `tx-${Date.now()}`,
@@ -488,17 +493,33 @@ export const db = {
 
       return updatedProduct;
     }
+
+    return {
+      id,
+      name: updates.name || 'Product',
+      category: updates.category || 'Ice Cream',
+      price: updates.price || 0,
+      current_stock: targetStock,
+      initial_stock: targetStock,
+      min_stock: updates.min_stock || 10,
+      max_stock: updates.max_stock || 500,
+      sold_quantity: updates.sold_quantity || 0,
+      created_at: now,
+      updated_at: now,
+    };
   },
 
   async deleteProduct(id: string): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) throw error;
-    } else {
-      const products = await this.getProducts();
-      const filtered = products.filter((p) => p.id !== id);
-      localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(filtered));
+      try {
+        await supabase.from('products').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase delete error');
+      }
     }
+    const products = await this.getProducts();
+    const filtered = products.filter((p) => p.id !== id);
+    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(filtered));
   },
 
   async quickAdjustStock(productId: string, delta: number, notes?: string): Promise<Product> {
@@ -542,19 +563,23 @@ export const db = {
   },
 
   async getTransactions(): Promise<StockTransaction[]> {
-    if (supabase) {
-      const { data, error } = await supabase.from('stock_transactions')
-        .select(`*, products (name)`)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data.map((t: any) => ({
-        ...t,
-        product_name: t.products?.name || 'Unknown Product'
-      }));
-    } else {
-      const txs = localStorage.getItem(LOCAL_TRANSACTIONS);
-      return txs ? JSON.parse(txs) : [];
+    try {
+      if (supabase) {
+        const { data, error } = await supabase.from('stock_transactions')
+          .select(`*, products (name)`)
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          return data.map((t: any) => ({
+            ...t,
+            product_name: t.products?.name || 'Unknown Product'
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getTransactions fallback');
     }
+    const txs = localStorage.getItem(LOCAL_TRANSACTIONS);
+    return txs ? JSON.parse(txs) : [];
   },
 
   async createSale(
@@ -642,85 +667,96 @@ export const db = {
     };
 
     if (supabase) {
-      const { data: saleData, error: saleErr } = await supabase.from('sales').insert([newSale]).select();
-      if (saleErr) throw saleErr;
+      try {
+        await supabase.from('sales').insert([newSale]);
+        await supabase.from('sale_items').insert(
+          newItems.map(({ product_name, ...item }) => item)
+        );
 
-      const { error: itemsErr } = await supabase.from('sale_items').insert(
-        newItems.map(({ product_name, ...item }) => item)
-      );
-      if (itemsErr) throw itemsErr;
+        for (const item of productsToUpdate) {
+          await supabase.from('products')
+            .update({ 
+              current_stock: item.newStock, 
+              sold_quantity: (item.product.sold_quantity || 0) + item.soldQty,
+              updated_at: now 
+            })
+            .eq('id', item.product.id);
+        }
 
-      for (const item of productsToUpdate) {
-        await supabase.from('products')
-          .update({ 
-            current_stock: item.newStock, 
-            sold_quantity: (item.product.sold_quantity || 0) + item.soldQty,
-            updated_at: now 
-          })
-          .eq('id', item.product.id);
+        await supabase.from('stock_transactions').insert(
+          newTransactions.map(({ product_name, ...tx }) => tx)
+        );
+      } catch (err) {
+        console.warn('Supabase createSale failed, saving to local storage');
       }
+    }
 
-      await supabase.from('stock_transactions').insert(
-        newTransactions.map(({ product_name, ...tx }) => tx)
-      );
-
-      return saleData[0];
-    } else {
-      for (const item of productsToUpdate) {
-        const idx = products.findIndex((p) => p.id === item.product.id);
+    // Always update local storage
+    for (const item of productsToUpdate) {
+      const idx = products.findIndex((p) => p.id === item.product.id);
+      if (idx > -1) {
         products[idx].current_stock = item.newStock;
         products[idx].sold_quantity = (products[idx].sold_quantity || 0) + item.soldQty;
         products[idx].updated_at = now;
       }
-      localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
-
-      const sales = await this.getSales();
-      sales.unshift(newSale);
-      localStorage.setItem(LOCAL_SALES, JSON.stringify(sales));
-
-      const saleItems = await this.getSaleItems();
-      saleItems.push(...newItems);
-      localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(saleItems));
-
-      const transactions = await this.getTransactions();
-      transactions.unshift(...newTransactions);
-      localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(transactions));
-
-      return newSale;
     }
+    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(products));
+
+    const sales = await this.getSales();
+    sales.unshift(newSale);
+    localStorage.setItem(LOCAL_SALES, JSON.stringify(sales));
+
+    const saleItems = await this.getSaleItems();
+    saleItems.push(...newItems);
+    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify(saleItems));
+
+    const transactions = await this.getTransactions();
+    transactions.unshift(...newTransactions);
+    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(transactions));
+
+    return newSale;
   },
 
   async getSales(): Promise<Sale[]> {
-    if (supabase) {
-      const { data, error } = await supabase.from('sales').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    } else {
-      const sales = localStorage.getItem(LOCAL_SALES);
-      return sales ? JSON.parse(sales) : [];
+    try {
+      if (supabase) {
+        const { data, error } = await supabase.from('sales').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          localStorage.setItem(LOCAL_SALES, JSON.stringify(data));
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getSales fallback');
     }
+    const sales = localStorage.getItem(LOCAL_SALES);
+    return sales ? JSON.parse(sales) : [];
   },
 
   async getSaleItems(saleId?: string): Promise<SaleItem[]> {
-    if (supabase) {
-      let query = supabase.from('sale_items').select(`*, products (name)`);
-      if (saleId) {
-        query = query.eq('sale_id', saleId);
+    try {
+      if (supabase) {
+        let query = supabase.from('sale_items').select(`*, products (name)`);
+        if (saleId) {
+          query = query.eq('sale_id', saleId);
+        }
+        const { data, error } = await query;
+        if (!error && data) {
+          return data.map((item: any) => ({
+            ...item,
+            product_name: item.products?.name || 'Unknown Product'
+          }));
+        }
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data.map((item: any) => ({
-        ...item,
-        product_name: item.products?.name || 'Unknown Product'
-      }));
-    } else {
-      const items = localStorage.getItem(LOCAL_SALE_ITEMS);
-      const parsed: SaleItem[] = items ? JSON.parse(items) : [];
-      if (saleId) {
-        return parsed.filter((item) => item.sale_id === saleId);
-      }
-      return parsed;
+    } catch (err) {
+      console.warn('Supabase getSaleItems fallback');
     }
+    const items = localStorage.getItem(LOCAL_SALE_ITEMS);
+    const parsed: SaleItem[] = items ? JSON.parse(items) : [];
+    if (saleId) {
+      return parsed.filter((item) => item.sale_id === saleId);
+    }
+    return parsed;
   },
 
   // EXPENSES CRUD

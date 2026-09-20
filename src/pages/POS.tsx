@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, getProductStatus } from '../services/db';
 import { Product, CartItem, Sale, SaleItem } from '../types';
+import { initialProducts } from '../services/db';
 import { ReceiptModal } from '../components/ReceiptModal';
 import {
   Search,
@@ -24,11 +25,18 @@ interface POSProps {
 }
 
 export const POS: React.FC<POSProps> = ({ triggerToast }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const p = localStorage.getItem('icecream_db_products');
+      return p ? JSON.parse(p) : initialProducts;
+    } catch {
+      return initialProducts;
+    }
+  });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Checkout Drawer / Modal state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -46,9 +54,11 @@ export const POS: React.FC<POSProps> = ({ triggerToast }) => {
   const loadProducts = async () => {
     try {
       const data = await db.getProducts();
-      setProducts(data);
-    } catch {
-      triggerToast('Failed to load menu products', 'error');
+      if (data && data.length > 0) {
+        setProducts(data);
+      }
+    } catch (e) {
+      console.warn('POS loadProducts error');
     } finally {
       setLoading(false);
     }
