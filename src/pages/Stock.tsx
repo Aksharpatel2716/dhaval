@@ -25,9 +25,9 @@ export const Stock: React.FC<StockProps> = ({ triggerToast }) => {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const p = localStorage.getItem('icecream_db_products');
-      return p ? JSON.parse(p) : [];
+      return p && JSON.parse(p).length > 0 ? JSON.parse(p) : initialProducts;
     } catch {
-      return [];
+      return initialProducts;
     }
   });
   const [loading, setLoading] = useState(false);

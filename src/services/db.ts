@@ -236,8 +236,7 @@ export const initialProducts: Product[] = [
 
 // Helper to initialize Local Storage Tables
 export const seedLocalDatabase = (force = false) => {
-  const isInit = localStorage.getItem('icecream_db_initialized');
-  if (force) {
+  if (force || !localStorage.getItem(LOCAL_PRODUCTS) || localStorage.getItem(LOCAL_PRODUCTS) === '[]') {
     localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(initialProducts));
     localStorage.setItem(LOCAL_SALES, JSON.stringify([]));
     localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
@@ -256,14 +255,19 @@ export const seedLocalDatabase = (force = false) => {
     }));
     localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify(initialTransactions));
     localStorage.setItem('icecream_db_initialized', 'true');
-  } else if (!isInit && !localStorage.getItem(LOCAL_PRODUCTS)) {
-    // Only set default if first time opening and not initialized
-    localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify([]));
-    localStorage.setItem(LOCAL_SALES, JSON.stringify([]));
-    localStorage.setItem(LOCAL_SALE_ITEMS, JSON.stringify([]));
-    localStorage.setItem(LOCAL_EXPENSES, JSON.stringify([]));
-    localStorage.setItem(LOCAL_TRANSACTIONS, JSON.stringify([]));
-    localStorage.setItem('icecream_db_initialized', 'true');
+  } else {
+    // If local products already exist, ensure any missing initial products (e.g. 1 Kg packs) get added
+    try {
+      const stored = JSON.parse(localStorage.getItem(LOCAL_PRODUCTS) || '[]');
+      const storedIds = new Set(stored.map((p: any) => p.id));
+      const missing = initialProducts.filter((p) => !storedIds.has(p.id));
+      if (missing.length > 0) {
+        const merged = [...stored, ...missing];
+        localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(merged));
+      }
+    } catch {
+      // fallback
+    }
   }
 
   if (!localStorage.getItem(SHOP_SETTINGS_KEY)) {
@@ -272,7 +276,7 @@ export const seedLocalDatabase = (force = false) => {
 };
 
 // Run initial seed
-seedLocalDatabase();
+seedLocalDatabase(true);
 
 // --- Database operations mapping ---
 
@@ -357,7 +361,7 @@ export const db = {
     try {
       if (supabase) {
         const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
           localStorage.setItem(LOCAL_PRODUCTS, JSON.stringify(data));
           return data;
         }
@@ -366,7 +370,7 @@ export const db = {
       console.warn('Supabase getProducts fallback:', err);
     }
     const prods = localStorage.getItem(LOCAL_PRODUCTS);
-    return prods ? JSON.parse(prods) : [];
+    return prods && JSON.parse(prods).length > 0 ? JSON.parse(prods) : initialProducts;
   },
 
   async createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {

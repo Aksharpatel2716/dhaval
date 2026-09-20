@@ -30,9 +30,9 @@ export const POS: React.FC<POSProps> = ({ triggerToast, onNavigate }) => {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const p = localStorage.getItem('icecream_db_products');
-      return p ? JSON.parse(p) : [];
+      return p && JSON.parse(p).length > 0 ? JSON.parse(p) : initialProducts;
     } catch {
-      return [];
+      return initialProducts;
     }
   });
   const [cart, setCart] = useState<CartItem[]>([]);
